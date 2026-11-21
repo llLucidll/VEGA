@@ -1,0 +1,1 @@
+okay what's next now. We should start working in parallel on ephemeral stream client for each VM instance and also another agent should start working on the scout swarms yes?
