@@ -19,12 +19,15 @@ export function PresenterBar() {
   const isPlaying = useVegaStore((s) => s.isPlaying)
   const scenarioId = useVegaStore((s) => s.scenarioId)
   const stage = useVegaStore((s) => s.stage)
+  const hasFindings = useVegaStore((s) => s.findings.length > 0)
   const chronosExpanded = useVegaStore((s) => s.chronosExpanded)
   const wardenDecision = useVegaStore((s) => s.wardenDecision)
 
   const nextCueLabel =
     stage === 'panopticon'
-      ? 'Next: Inject Anomaly'
+      ? hasFindings
+        ? 'Next: Inspect Node'
+        : 'Next: Inject Anomaly'
       : stage === 'ghost_protocol'
         ? 'Next: The Council'
         : stage === 'council'
@@ -45,7 +48,7 @@ export function PresenterBar() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.18 }}
-          className="vega-panel fixed top-16 right-4 z-40 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
+          className="vega-panel fixed top-32 right-4 z-40 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
         >
           {/* Source Mode Toggle */}
           <div className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 p-0.5 font-mono-tabular text-[10px]">

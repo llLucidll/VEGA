@@ -130,9 +130,7 @@ class MockScenarioSource implements VegaDataSource {
     this.syncUpTo(targetMs)
     const nextState = useVegaStore.getState()
     nextState.setElapsedMs(targetMs)
-    nextState.selectNode('vm-a')
     nextState.setThreatMode('INVESTIGATE')
-    nextState.setStage('ghost_protocol')
 
     // Visual red pulse burst on vm-a edges
     particleBus.spawn('vm-a', 'vega-core', 'file', true)
@@ -177,7 +175,13 @@ class MockScenarioSource implements VegaDataSource {
     const state = useVegaStore.getState()
 
     if (state.stage === 'panopticon') {
-      this.injectAnomaly()
+      const finding = state.findings.at(-1)
+      if (finding) {
+        state.selectNode(finding.source_id)
+        state.setStage('ghost_protocol')
+      } else {
+        this.injectAnomaly()
+      }
       return
     }
 

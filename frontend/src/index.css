@@ -7,7 +7,7 @@
     --vega-border: rgba(148, 163, 184, 0.16);
     --vega-accent: #38bdf8;
     --vega-accent-glow: rgba(56, 189, 248, 0.28);
-    --vega-oracle: #a855f7;
+    --vega-oracle: #7851a9;
     --vega-warden: #ef4444;
     --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -19,8 +19,8 @@
   }
 
   [data-threat-mode='INVESTIGATE'] {
-    --vega-accent: #a855f7;
-    --vega-accent-glow: rgba(168, 85, 247, 0.32);
+    --vega-accent: var(--vega-oracle);
+    --vega-accent-glow: color-mix(in srgb, var(--vega-oracle) 32%, transparent);
   }
 
   [data-threat-mode='SEV1_ESCALATION'],
@@ -52,11 +52,69 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 20px 50px rgba(0, 0, 0, 0.55);
 }
 
-.vega-grid-bg {
-  background-image:
-    linear-gradient(to right, rgba(56, 189, 248, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.045) 1px, transparent 1px);
-  background-size: 40px 40px;
+.vega-glass::before {
+  content: '';
+  position: absolute;
+  inset: -0.5rem -1.5rem;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(5, 8, 17, 0.14);
+  backdrop-filter: blur(7px) saturate(120%) brightness(0.85);
+  /* Feather the blur into the graph instead of outlining the button. */
+  mask-image: radial-gradient(ellipse closest-side, #000 32%, rgba(0, 0, 0, 0.75) 60%, transparent);
+}
+
+[data-eye-state='idle'],
+[data-eye-state='alert'],
+[data-core-state='idle'],
+[data-core-state='alert'] {
+  --vega-state-color: #6ee7b7;
+}
+
+[data-eye-state='investigating'],
+[data-core-state='investigating'] {
+  --vega-state-color: var(--vega-oracle);
+}
+
+[data-eye-state='warden'] {
+  --vega-state-color: var(--color-red-400);
+}
+
+[data-eye-state] {
+  color: var(--vega-state-color);
+}
+
+.vega-core {
+  --core-tint: var(--vega-state-color, #38bdf8);
+  background-color: color-mix(in srgb, var(--core-tint) 20%, var(--vega-bg));
+  border-color: color-mix(in srgb, var(--core-tint) 72%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--core-tint) 23%, transparent);
+}
+
+.vega-eye-scan {
+  animation: vega-eye-scan 4s ease-in-out infinite;
+}
+
+@keyframes vega-eye-scan {
+  0%, 12%, 82%, 100% { transform: translateX(0); }
+  23%, 42% { transform: translateX(-3.4px); }
+  55%, 72% { transform: translateX(3.4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vega-eye-scan {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .vega-glass {
+    background: var(--vega-bg);
+  }
+
+  .vega-glass::before {
+    content: none;
+  }
 }
 
 .vega-scanlines {

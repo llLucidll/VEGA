@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { PresenterBar } from './components/layout/PresenterBar'
-import { TopHud } from './components/layout/TopHud'
 import { ChronosScrubber } from './components/overlays/ChronosScrubber'
 import { ObserverDrawer } from './components/overlays/ObserverDrawer'
 import { BlackoutOverlay } from './components/stages/BlackoutOverlay'
@@ -14,6 +13,13 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
 export function App() {
   const threatMode = useVegaStore((s) => s.threatMode)
+  const wardenDecisionId = useVegaStore((s) => s.wardenDecision?.decision_id)
+  const setStage = useVegaStore((s) => s.setStage)
+
+  useEffect(() => {
+    // Open the Warden view once per decision; execution updates don't interrupt navigation.
+    if (wardenDecisionId) setStage('blackout')
+  }, [wardenDecisionId, setStage])
 
   useEffect(() => {
     let cancelled = false
@@ -65,12 +71,11 @@ export function App() {
   return (
     <div
       data-threat-mode={threatMode}
-      className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#050811] text-slate-100"
+      className="relative h-dvh w-full overflow-hidden bg-[#050811] text-slate-100"
     >
-      <TopHud />
       <PresenterBar />
 
-      <main className="relative flex-1 overflow-hidden">
+      <main className="relative h-full overflow-clip">
         <PanopticonCanvas />
         <GhostProtocolPanel />
         <CouncilView />

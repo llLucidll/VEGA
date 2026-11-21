@@ -48,7 +48,7 @@ export function GhostProtocolPanel() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 460, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-          className="vega-panel absolute top-4 right-4 bottom-16 z-20 flex w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl"
+          className="vega-panel absolute top-32 right-4 bottom-16 z-20 flex w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl"
         >
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-800/90 px-4 py-3">

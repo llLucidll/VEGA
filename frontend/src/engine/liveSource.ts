@@ -91,11 +91,12 @@ export class LiveStreamSource implements VegaDataSource {
   advanceCue() {
     const state = useVegaStore.getState()
     if (state.stage === 'panopticon') {
-      if (state.findings.length === 0) {
-        this.injectAnomaly()
-      } else {
-        state.selectNode('vm-a')
+      const finding = state.findings.at(-1)
+      if (finding) {
+        state.selectNode(finding.source_id)
         state.setStage('ghost_protocol')
+      } else {
+        this.injectAnomaly()
       }
       return
     }
@@ -367,8 +368,5 @@ export class LiveStreamSource implements VegaDataSource {
     }
 
     await this.flushWindow()
-    const store = useVegaStore.getState()
-    store.selectNode('vm-a')
-    store.setStage('ghost_protocol')
   }
 }
