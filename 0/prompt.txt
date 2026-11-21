@@ -1,0 +1,3 @@
+okay so how im planning to do this is we have two parallel linux VMs running on this laptop and at the same time im viewing the local server deployed panopticon on the same laptop. I will access a secure folder on the laptop which houses the env keys and then i will run a tar command to try to compress it and then i will uplaod it. The respective channels we are streaming should be enough context for the scout swarm to corroborate and raise to sentinel.
+
+Does this sequence make sense
