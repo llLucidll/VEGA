@@ -40,6 +40,10 @@ def render(a: OracleAssessment) -> str:
             out.append(f"{v.source_id} cleared: {v.defender.reason}")
         elif v.failures:
             out.append(f"{v.source_id} escalated: {'; '.join(v.failures)}")
+    out.append("\nWhy:")
+    for v in a.verdicts:
+        out.append(f"  {v.source_id:<6}{v.rule:<30}{v.rule_text}")
+        out.extend(f"  {'':<6}! {err}" for err in v.citation_errors)
     out.append(f"\nAction: {a.recommended_action}\nScope:  {a.recommended_scope}\n")
     return "\n".join(out)
 
