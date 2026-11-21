@@ -1,0 +1,1 @@
+alright this looks good, can you remove the numbered 1.panopticon, 2. ghost protocol from the header, we should have a cleaner UI so that it's only navigated via shift D and regular production level usage such as clicking the nodes etc
