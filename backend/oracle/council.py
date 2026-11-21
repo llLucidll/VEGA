@@ -114,10 +114,18 @@ def arbitrate(v: VmVerdict) -> tuple[str, str, str]:
         detail = "; ".join(v.failures) or "a member returned no opinion"
         return "ESCALATE", "MEMBER_FAILED", f"Council incomplete ({detail}); human review."
     p, d = v.prosecutor.score, v.defender.score
-    if not v.steward.allowed:
-        return "ESCALATE", "STEWARD_DENIED", "Steward found no policy allowing containment of this host; human review."
     if v.source_id in PROTECTED_HOSTS:
         return "ESCALATE", "PROTECTED_HOST", f"{v.source_id} is a protected host; containment needs human approval."
+    # Clearing a host contains nothing, so the Steward's containment ruling doesn't apply.
+    if d >= CLEAR_DEFENDER and p < CLEAR_PROSECUTOR_MAX:
+        return (
+            "NO_ACTION",
+            "CLEARED_INNOCENT_EXPLANATION",
+            f"Defender {d:.2f} >= {CLEAR_DEFENDER:.2f} ('{v.defender.hypothesis}') and Prosecutor {p:.2f} < "
+            f"{CLEAR_PROSECUTOR_MAX:.2f}.",
+        )
+    if not v.steward.allowed:
+        return "ESCALATE", "STEWARD_DENIED", "Steward found no policy allowing containment of this host; human review."
     if p >= CONTAIN_PROSECUTOR and not (v.prosecutor.cited_finding_ids or v.prosecutor.cited_event_ids):
         return (
             "ESCALATE",
@@ -130,13 +138,6 @@ def arbitrate(v: VmVerdict) -> tuple[str, str, str]:
             "CONTAIN_STRONG_EVIDENCE",
             f"Prosecutor {p:.2f} >= {CONTAIN_PROSECUTOR:.2f} with cited evidence, Defender {d:.2f} < "
             f"{CONTAIN_DEFENDER_MAX:.2f}, and policy allows containment.",
-        )
-    if d >= CLEAR_DEFENDER and p < CLEAR_PROSECUTOR_MAX:
-        return (
-            "NO_ACTION",
-            "CLEARED_INNOCENT_EXPLANATION",
-            f"Defender {d:.2f} >= {CLEAR_DEFENDER:.2f} ('{v.defender.hypothesis}') and Prosecutor {p:.2f} < "
-            f"{CLEAR_PROSECUTOR_MAX:.2f}.",
         )
     return (
         "ESCALATE",

@@ -37,9 +37,13 @@ ROLE_DEFENDER = (
 )
 
 ROLE_STEWARD = (
-    "You are the Steward. Using ONLY the policy list, decide whether containing this machine would "
-    "be allowed if compromise is likely. Return the policy IDs you relied on (only IDs from the "
-    "list), one sentence, and the strongest policy reason to hold back as your counterpoint."
+    "You are the Steward. Answer one question using ONLY the policy list: IF this machine were "
+    "compromised, would policy permit automated containment of it? Do not judge whether it is "
+    "compromised; that is the Prosecutor's and Defender's job, and assume compromise for this "
+    "question. Set allowed=false only when a policy forbids or restricts containing this host (for "
+    "example a protected host that needs human approval). Return the policy IDs you relied on (only "
+    "IDs from the list), one sentence, and as your counterpoint any policy condition or limit on "
+    "containing this host."
 )
 
 PROSECUTOR = f"{CHARTER}\n\n{ROLE_PROSECUTOR}"

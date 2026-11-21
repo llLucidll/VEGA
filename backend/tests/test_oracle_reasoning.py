@@ -118,6 +118,28 @@ async def test_steward_denial_escalates_with_rule():
     assert (v.verdict, v.rule) == ("ESCALATE", "STEWARD_DENIED")
 
 
+async def test_cleared_host_is_not_blocked_by_steward_denial():
+    # Live run seen: Steward said "containment not allowed, compromise not likely" for vm-b.
+    ops = copy.deepcopy(MOCK["vm-b"])
+    ops["steward"]["allowed"] = False
+
+    v = await _verdict("vm-b", ops)
+
+    assert (v.verdict, v.rule) == ("NO_ACTION", "CLEARED_INNOCENT_EXPLANATION")
+
+
+async def test_protected_host_always_escalates(monkeypatch):
+    monkeypatch.setattr(council, "PROTECTED_HOSTS", {"vm-b"})
+
+    v = await _verdict("vm-b", copy.deepcopy(MOCK["vm-b"]))
+
+    assert (v.verdict, v.rule) == ("ESCALATE", "PROTECTED_HOST")
+
+
+def test_steward_is_told_not_to_judge_compromise():
+    assert "Do not judge whether it is compromised" in prompts.ROLE_STEWARD
+
+
 # ---------- per-VM isolation ----------
 
 def test_member_input_contains_only_its_own_host_context():
