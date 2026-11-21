@@ -8,6 +8,7 @@ frontend/.vite/
 __pycache__/
 *.pyc
 .pytest_cache/
+backend/oracle_out/
 
 # Environment & local secrets
 .env
