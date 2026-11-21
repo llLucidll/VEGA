@@ -1,0 +1,18 @@
+alright now the sequential build order we discussed, we finished setting up the frontend scaffold and the lucide package etc and all the other stuff you mentioned at the start yes
+1. Foundation first (~1–2 hrs, single thread):
+     - Vite + Tailwind v4 + theme tokens (--vega-accent shifting cyan → violet → crimson)
+     - TypeScript contracts matching ../ephemeral_streams/vega_streams/models.py and ../Agent Swarm.md
+     - Zustand state machine + deterministic MockScenarioSource
+ 2. Parallel UI tracks (~4–6 hrs across 4–5 agents):
+     - Agent 1 — Shell & HUD: Top bar (active 2-min window, Redis TTL countdown, stage switcher, Shift+D presenter cue bar).
+     - Agent 2 — Panopticon + Ghost Protocol: <canvas> network + particle streams + smooth camera zoom into vm-a + file/network/process telemetry & scout
+       findings.
+     - Agent 3 — The Council: Sentinel / Oracle / Warden SVG triad + animated reasoning beams + policy/history citations.
+     - Agent 4 — Blackout: Crimson sweep, panel fade-out, Warden policy gate + AUTHORIZE CONTAINMENT dry-run trigger + live audit log.
+     - Agent 5 — Chronos + Observer: Bottom forensic scrubber synced to events[] + ⌘K Q&A drawer with clickable event_id jumps.
+ 3. Backend integration & polish (~hours 10–24):
+     - Because the UI runs end-to-end on MockScenarioSource by hour ~8, you already have a pitchable demo early.
+     - Backend agents can build ephemeral_streams + Gemini scouts/Correlator in parallel, then plug into a LiveStreamSource adapter—while keeping a
+       SIMULATED / LIVE toggle as stage insurance.
+
+now taht we have the template for the frontend should we start building out the backend? in parallel tracks?
