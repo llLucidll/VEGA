@@ -1,0 +1,1 @@
+okay sounds good, i should probably clone this repo into two VMs separately and then run the stream that connects to the central VEGA API yes? wdyt
