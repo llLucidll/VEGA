@@ -1,0 +1,3 @@
+wait, the redis stream channels on the VM will send the live channel information to the panopticon node VEGA Api that lives on th emain laptop yes?
+
+and then we should be able to elevate from that signal and switch to council
