@@ -1,0 +1,19 @@
+# Dependencies & build artifacts
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Python / backend
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment & local secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.log
