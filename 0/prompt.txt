@@ -1,0 +1,1 @@
+got it, i think we can do 1 right now eh? and also build the collector into the repo rn and then we can just move the file into the VM instead of cloning repo (but i want the file in the repo for hacakthon submission purposes in a relevant directory)
