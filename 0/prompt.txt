@@ -1,0 +1,3 @@
+i want to build the layer for the ephemeral stream that streams the three data channels from individual vm devices to the central vega node.
+
+I believe we settled on a redis stream approach and the project is already scaffolded to do so. With that in mind, can you go ahead and analyze the design and tell me if we can start implementing this?
