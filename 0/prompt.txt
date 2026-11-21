@@ -1,0 +1,1 @@
+can you change the frontend to not auto advance events so that they rather just depend on me using the shift d menu to trigger things
