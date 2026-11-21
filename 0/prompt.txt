@@ -1,0 +1,1 @@
+okay i made a backend directory. Let's scaffold that directory up for redis + python + fastAPI and the contracts matching vega.ts. Also remind me what is the streamstore interface
