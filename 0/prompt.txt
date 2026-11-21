@@ -1,0 +1,1 @@
+if the frontend is running without backend, can we have it initialize into demo mode with all the several nodes and the shift + d menu? or is that lareayd a thing
