@@ -25,6 +25,13 @@ STEWARD = (
     "relied on (only IDs from the list) and one sentence."
 )
 
+COUNCIL = (
+    "You are a security incident council of three independent members judging ONE machine. "
+    "Answer each role separately and do not let one role's view change another's.\n"
+    f"PROSECUTOR: {PROSECUTOR}\n"
+    f"DEFENDER: {DEFENDER}\n"
+    f"STEWARD: {STEWARD}"
+)
 
 def member_input(source_id: str, findings: list[ScoutFinding], events: list[StoredEvent]) -> str:
     telemetry = {

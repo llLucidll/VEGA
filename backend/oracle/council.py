@@ -1,8 +1,11 @@
 """The Oracle Council.
 
-For every VM in the signal, three members (Prosecutor, Defender, Steward) run in parallel,
-each seeing ONLY that VM's findings. A deterministic Arbiter turns their opinions into a
-verdict. All VMs run concurrently, so total time is roughly one model call.
+For every VM in the signal, three members (Prosecutor, Defender, Steward) judge ONLY that
+VM's findings. A deterministic Arbiter turns their opinions into a verdict.
+
+Modes (ORACLE_COUNCIL_MODE):
+  combined (default): one model call per VM returns all three opinions -> 3 calls for 3 VMs
+  separate:           one model call per member                        -> 9 calls for 3 VMs
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from . import prompts
 from .context import HISTORICAL_CONTEXT, POLICIES, PROTECTED_HOSTS
 from .schemas import (
     CompetingExplanation,
+    CouncilOpinions,
     DefenderOpinion,
     OracleAssessment,
     OracleRequest,
@@ -35,8 +39,11 @@ from .schemas import (
 T = TypeVar("T", bound=BaseModel)
 
 ARBITER_VERSION = "arbiter-v1"
-MODEL = os.getenv("ORACLE_MODEL", "gemini-2.5-flash")
-MEMBER_TIMEOUT_S = float(os.getenv("ORACLE_MEMBER_TIMEOUT", "12"))
+MODEL = os.getenv("ORACLE_MODEL", "gemini-3.5-flash")
+MEMBER_TIMEOUT_S = float(os.getenv("ORACLE_MEMBER_TIMEOUT", "30"))
+THINKING_LEVEL = os.getenv("ORACLE_THINKING_LEVEL")  # e.g. "low"; unset = model default
+MAX_CONCURRENCY = int(os.getenv("ORACLE_MAX_CONCURRENCY", "3"))  # max simultaneous model calls (free-tier friendly)
+COUNCIL_MODE = os.getenv("ORACLE_COUNCIL_MODE", "combined")
 
 # Arbiter thresholds
 CONTAIN_PROSECUTOR = 0.70
@@ -60,7 +67,7 @@ def gemini_caller() -> MemberCaller:
     from google import genai
     from google.genai import types
 
-    client = genai.Client()
+    client = genai.Client()  # reads GEMINI_API_KEY / GOOGLE_API_KEY
 
     async def call(member: str, source_id: str, system: str, user: str, schema: type[T]) -> T:
         resp = await client.aio.models.generate_content(
@@ -71,6 +78,7 @@ def gemini_caller() -> MemberCaller:
                 response_mime_type="application/json",
                 response_schema=schema,
                 temperature=0,
+                **({"thinking_config": types.ThinkingConfig(thinking_level=THINKING_LEVEL)} if THINKING_LEVEL else {}),
             ),
         )
         if isinstance(resp.parsed, schema):
@@ -89,6 +97,8 @@ def mock_caller(path: Path | None = None) -> MemberCaller:
     async def call(member: str, source_id: str, system: str, user: str, schema: type[T]) -> T:
         await asyncio.sleep(0.05)
         try:
+            if member == "council":
+                return schema.model_validate(canned[source_id])
             return schema.model_validate(canned[source_id][member])
         except KeyError:
             raise ValueError(f"no mock opinion for {source_id}/{member}") from None
@@ -113,19 +123,44 @@ def arbitrate(v: VmVerdict) -> str:
 
 # ---------- Council ----------
 
+def _clean(member: str, opinion: BaseModel) -> BaseModel:
+    if member == "steward":  # drop hallucinated policy IDs
+        opinion.policy_ids = [pid for pid in opinion.policy_ids if pid in POLICIES]
+    if member in ("prosecutor", "defender"):
+        opinion.score = min(1.0, max(0.0, opinion.score))
+    return opinion
+
+
+async def _run_combined(
+    caller: MemberCaller, source_id: str, user: str, fail: set[str], limit: asyncio.Semaphore
+) -> list[tuple[str, BaseModel | None, str | None]]:
+    forced = {m for m in MEMBERS if f"{source_id}:{m}" in fail}
+    try:
+        async with limit:
+            ops = await asyncio.wait_for(
+                caller("council", source_id, prompts.COUNCIL, user, CouncilOpinions), MEMBER_TIMEOUT_S
+            )
+    except asyncio.TimeoutError:
+        return [(m, None, f"{m}: timed out") for m in MEMBERS]
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        err = f"{type(exc).__name__}: {str(exc)[:120]}"
+        return [(m, None, f"{m}: {err}") for m in MEMBERS]
+    return [
+        (m, None, f"{m}: forced failure") if m in forced else (m, _clean(m, getattr(ops, m)), None)
+        for m in MEMBERS
+    ]
+
+
 async def _run_member(
-    caller: MemberCaller, member: str, source_id: str, user: str, fail: set[str]
+    caller: MemberCaller, member: str, source_id: str, user: str, fail: set[str], limit: asyncio.Semaphore
 ) -> tuple[str, BaseModel | None, str | None]:
     system, schema = MEMBERS[member]
     if f"{source_id}:{member}" in fail:
         return member, None, f"{member}: forced failure"
     try:
-        opinion = await asyncio.wait_for(caller(member, source_id, system, user, schema), MEMBER_TIMEOUT_S)
-        if member == "steward":  # drop hallucinated policy IDs
-            opinion.policy_ids = [pid for pid in opinion.policy_ids if pid in POLICIES]
-        if member in ("prosecutor", "defender"):
-            opinion.score = min(1.0, max(0.0, opinion.score))
-        return member, opinion, None
+        async with limit:  # limits simultaneous model calls (free-tier quota)
+            opinion = await asyncio.wait_for(caller(member, source_id, system, user, schema), MEMBER_TIMEOUT_S)
+        return member, _clean(member, opinion), None
     except asyncio.TimeoutError:
         return member, None, f"{member}: timed out"
     except Exception as exc:  # noqa: BLE001 - any failure must fail closed, never crash the council
@@ -138,13 +173,17 @@ async def run_vm_council(
     findings: list[ScoutFinding],
     events: list[StoredEvent],
     fail: set[str],
+    limit: asyncio.Semaphore,
 ) -> VmVerdict:
     if not findings:
         v = VmVerdict(source_id=source_id, verdict="ESCALATE", prosecutor=None, defender=None,
                       steward=None, failures=["no findings for this source"])
         return v
     user = prompts.member_input(source_id, findings, events)
-    results = await asyncio.gather(*(_run_member(caller, m, source_id, user, fail) for m in MEMBERS))
+    if COUNCIL_MODE == "separate":
+        results = await asyncio.gather(*(_run_member(caller, m, source_id, user, fail, limit) for m in MEMBERS))
+    else:
+        results = await _run_combined(caller, source_id, user, fail, limit)
     opinions = {m: o for m, o, _ in results}
     v = VmVerdict(
         source_id=source_id,
@@ -160,6 +199,7 @@ async def run_vm_council(
 
 async def decide(request: OracleRequest, caller: MemberCaller, model_label: str, fail: set[str] | None = None) -> OracleAssessment:
     fail = fail or set()
+    limit = asyncio.Semaphore(MAX_CONCURRENCY)  # one limit per council run
     started = time.perf_counter()
     signal = request.signal
 
@@ -171,7 +211,7 @@ async def decide(request: OracleRequest, caller: MemberCaller, model_label: str,
         events_by_vm[e.source_id].append(e)
 
     verdicts = await asyncio.gather(
-        *(run_vm_council(caller, sid, findings_by_vm[sid], events_by_vm[sid], fail) for sid in signal.source_ids)
+        *(run_vm_council(caller, sid, findings_by_vm[sid], events_by_vm[sid], fail, limit) for sid in signal.source_ids)
     )
     council_ms = int((time.perf_counter() - started) * 1000)
     return build_assessment(request, list(verdicts), model_label, council_ms)

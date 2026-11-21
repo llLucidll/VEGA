@@ -84,6 +84,13 @@ class StewardOpinion(BaseModel):
     policy_ids: list[str] = Field(description="IDs of the policies relied on")
     reason: str = Field(description="One sentence")
 
+class CouncilOpinions(BaseModel):
+    """All three members' opinions for one VM, returned by a single model call."""
+
+    prosecutor: ProsecutorOpinion
+    defender: DefenderOpinion
+    steward: StewardOpinion
+
 
 class VmVerdict(BaseModel):
     source_id: str
