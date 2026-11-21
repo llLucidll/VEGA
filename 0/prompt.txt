@@ -1,0 +1,1 @@
+okay what is the best way to demo then. i dont mind using no GUI plain linux distros since i just need the terminal to do the demo part which is accessing a secure directory then running tar compression on it then uploading it outward
