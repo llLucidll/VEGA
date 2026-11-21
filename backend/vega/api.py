@@ -84,6 +84,11 @@ scheduler = WindowScheduler(
     window_seconds=settings.window_seconds,
 )
 
+# Oracle council: runs on every SEV1 signal when ORACLE_BRIDGE=1 (no effect otherwise).
+from oracle.sentinel_bridge import attach as attach_oracle  # noqa: E402
+
+oracle_bridge = attach_oracle(coordinator, runtime)
+
 
 async def _cleanup_loop() -> None:
     while True:

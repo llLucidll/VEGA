@@ -90,6 +90,18 @@ export interface CitedPolicy {
   excerpt: string
 }
 
+export type Verdict = 'CONTAIN' | 'NO_ACTION' | 'ESCALATE'
+
+/** Oracle council outcome for one machine named in the CouncilSignal. */
+export interface VmVerdict {
+  source_id: string
+  verdict: Verdict
+  prosecutor: { score: number; reason: string } | null
+  defender: { score: number; hypothesis: string; reason: string } | null
+  steward: { allowed: boolean; policy_ids: string[]; reason: string } | null
+  failures: string[]
+}
+
 export interface OracleAssessment {
   incident_id: string
   signal_id: string
@@ -106,6 +118,9 @@ export interface OracleAssessment {
   recommended_scope: string
   model_version: string
   created_at: string
+  // Oracle council additions (optional so existing mock scenarios stay valid)
+  verdicts?: VmVerdict[]
+  council_ms?: number
 }
 
 export interface PolicyCheck {

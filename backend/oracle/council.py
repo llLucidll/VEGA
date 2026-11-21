@@ -39,7 +39,7 @@ from .schemas import (
 T = TypeVar("T", bound=BaseModel)
 
 ARBITER_VERSION = "arbiter-v1"
-MODEL = os.getenv("ORACLE_MODEL", "gemini-3.5-flash")
+MODEL = os.getenv("ORACLE_MODEL", "gemini-3.5-flash-lite")
 MEMBER_TIMEOUT_S = float(os.getenv("ORACLE_MEMBER_TIMEOUT", "30"))
 THINKING_LEVEL = os.getenv("ORACLE_THINKING_LEVEL")  # e.g. "low"; unset = model default
 MAX_CONCURRENCY = int(os.getenv("ORACLE_MAX_CONCURRENCY", "3"))  # max simultaneous model calls (free-tier friendly)
