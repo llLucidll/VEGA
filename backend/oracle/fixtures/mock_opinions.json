@@ -1,0 +1,58 @@
+{
+    "vm-a": {
+        "prosecutor": {
+            "score": 0.95,
+            "reason": "Unapproved domain, interactively created admin account and production keys archived then sent 48 MB to 198.51.100.44."
+        },
+        "defender": {
+            "score": 0.05,
+            "hypothesis": "Scheduled backup or key rotation",
+            "reason": "Backups run as svc_backup to backup.corp.internal; this was an interactive shell sending keys to an external IP."
+        },
+        "steward": {
+            "allowed": true,
+            "policy_ids": [
+                "POL-CONTAIN-01",
+                "POL-DATA-04",
+                "POL-EGRESS-09"
+            ],
+            "reason": "Single managed host with key-material exfiltration; automated containment permitted."
+        }
+    },
+    "vm-b": {
+        "prosecutor": {
+            "score": 0.15,
+            "reason": "Only finding is a large upload to an internal host; no other indicators."
+        },
+        "defender": {
+            "score": 0.93,
+            "hypothesis": "Nightly scheduled backup",
+            "reason": "Upload by svc_backup to backup.corp.internal at 02:00 matches the authorized nightly backup window."
+        },
+        "steward": {
+            "allowed": true,
+            "policy_ids": [
+                "POL-BACKUP-02"
+            ],
+            "reason": "Containment would be permitted, but the activity is an authorized backup."
+        }
+    },
+    "vm-c": {
+        "prosecutor": {
+            "score": 0.91,
+            "reason": "Same unapproved domain as vm-a, credential-dumping tool run and egress to vm-a's exfiltration IP."
+        },
+        "defender": {
+            "score": 0.07,
+            "hypothesis": "Security team penetration test",
+            "reason": "No sanctioned test is listed in the organization context and the tool ran from an interactive shell."
+        },
+        "steward": {
+            "allowed": true,
+            "policy_ids": [
+                "POL-CONTAIN-01"
+            ],
+            "reason": "Single managed host likely compromised; automated containment permitted."
+        }
+    }
+}

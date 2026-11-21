@@ -83,6 +83,37 @@ class CompetingExplanation(BaseModel):
     reason: str
 
 
+Verdict = Literal["CONTAIN", "NO_ACTION", "ESCALATE"]
+
+
+class ProsecutorOpinion(BaseModel):
+    score: float
+    reason: str
+
+
+class DefenderOpinion(BaseModel):
+    score: float
+    hypothesis: str
+    reason: str
+
+
+class StewardOpinion(BaseModel):
+    allowed: bool
+    policy_ids: list[str]
+    reason: str
+
+
+class VmVerdict(BaseModel):
+    """Oracle council outcome for one machine named in the CouncilSignal."""
+
+    source_id: str
+    verdict: Verdict
+    prosecutor: ProsecutorOpinion | None = None
+    defender: DefenderOpinion | None = None
+    steward: StewardOpinion | None = None
+    failures: list[str] = Field(default_factory=list)
+
+
 class OracleAssessment(BaseModel):
     incident_id: str
     signal_id: str
@@ -95,6 +126,9 @@ class OracleAssessment(BaseModel):
     recommended_scope: str
     model_version: str
     created_at: datetime
+    # Oracle council additions (optional so existing producers stay valid)
+    verdicts: list[VmVerdict] = Field(default_factory=list)
+    council_ms: int = 0
 
 
 class PolicyCheck(BaseModel):
