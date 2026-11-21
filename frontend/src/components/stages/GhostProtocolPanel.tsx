@@ -2,7 +2,7 @@ import { ArrowRight, Cpu, FileText, Globe, Lock, Radar, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import type { Channel } from '../../contracts/vega'
-import { vegaSource } from '../../engine/mockSource'
+import { vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 const CHANNEL_META: Record<Channel, { label: string; color: string; icon: typeof FileText }> = {

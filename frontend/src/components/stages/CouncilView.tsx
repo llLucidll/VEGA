@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, CheckCircle2, Eye, Shield, XCircle } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { vegaSource } from '../../engine/mockSource'
+import { vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 export function CouncilView() {

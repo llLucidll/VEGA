@@ -1,7 +1,7 @@
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force'
 import { Lock, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { MonitoredNode, NetworkEdge } from '../../contracts/vega'
+import type { MonitoredNode } from '../../contracts/vega'
 import { particleBus } from '../../engine/particleBus'
 import { useVegaStore } from '../../store/useVegaStore'
 
@@ -18,21 +18,37 @@ interface LayoutLink {
   target: string | LayoutNode
 }
 
-function computeStaticLayout(nodes: MonitoredNode[], edges: NetworkEdge[]): Map<string, { x: number; y: number }> {
-  const simNodes: LayoutNode[] = nodes.map((n, idx) => {
-    if (n.source_id === 'vega-core') {
-      return { id: n.source_id, x: 0, y: 0, fx: 0, fy: 0 }
+function computeStaticLayoutFromKey(topologyKey: string): Map<string, { x: number; y: number }> {
+  const [nodesPart = '', edgesPart = ''] = topologyKey.split('|')
+  const nodeSpecs = nodesPart
+    .split(',')
+    .filter(Boolean)
+    .map((item) => {
+      const [id, cluster] = item.split(':')
+      return { id, cluster }
+    })
+  const edgeSpecs = edgesPart
+    .split(',')
+    .filter(Boolean)
+    .map((item) => {
+      const [from, to] = item.split('>')
+      return { from, to }
+    })
+
+  const simNodes: LayoutNode[] = nodeSpecs.map((n, idx) => {
+    if (n.id === 'vega-core') {
+      return { id: n.id, x: 0, y: 0, fx: 0, fy: 0 }
     }
-    const angle = (idx / Math.max(1, nodes.length - 1)) * Math.PI * 2
+    const angle = (idx / Math.max(1, nodeSpecs.length - 1)) * Math.PI * 2
     const radius = n.cluster === 'eng' ? 210 : n.cluster === 'ops' ? 250 : 280
     return {
-      id: n.source_id,
+      id: n.id,
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius,
     }
   })
 
-  const simLinks: LayoutLink[] = edges.map((e) => ({ source: e.from, target: e.to }))
+  const simLinks: LayoutLink[] = edgeSpecs.map((e) => ({ source: e.from, target: e.to }))
 
   const sim = forceSimulation<LayoutNode>(simNodes)
     .force(
@@ -77,7 +93,8 @@ export function PanopticonCanvas() {
 
   const [size, setSize] = useState({ width: 1280, height: 720 })
 
-  const basePositions = useMemo(() => computeStaticLayout(nodes, edges), [nodes, edges])
+  const topologyKey = `${nodes.map((n) => `${n.source_id}:${n.cluster}`).join(',')}|${edges.map((e) => `${e.from}>${e.to}`).join(',')}`
+  const basePositions = useMemo(() => computeStaticLayoutFromKey(topologyKey), [topologyKey])
 
   useEffect(() => {
     const el = containerRef.current

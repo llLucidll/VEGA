@@ -1,6 +1,6 @@
 import { AlertOctagon, ArrowLeft, CheckCircle2, Lock, ShieldAlert, ShieldCheck, Terminal } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { vegaSource } from '../../engine/mockSource'
+import { vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 export function BlackoutOverlay() {

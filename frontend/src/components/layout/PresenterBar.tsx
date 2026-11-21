@@ -4,16 +4,18 @@ import {
   Pause,
   Play,
   PlusCircle,
+  Radio,
   RotateCcw,
   ShieldCheck,
   Zap,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { vegaSource } from '../../engine/mockSource'
+import { flushLiveWindow, switchDataMode, vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 export function PresenterBar() {
   const presenterOpen = useVegaStore((s) => s.presenterOpen)
+  const dataMode = useVegaStore((s) => s.dataMode)
   const isPlaying = useVegaStore((s) => s.isPlaying)
   const scenarioId = useVegaStore((s) => s.scenarioId)
   const stage = useVegaStore((s) => s.stage)
@@ -45,9 +47,32 @@ export function PresenterBar() {
           transition={{ duration: 0.18 }}
           className="vega-panel fixed top-16 right-4 z-40 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
         >
-          <span className="font-mono-tabular text-[10px] font-semibold tracking-widest text-slate-400 uppercase">
-            Manual Cues
-          </span>
+          {/* Source Mode Toggle */}
+          <div className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 p-0.5 font-mono-tabular text-[10px]">
+            <button
+              type="button"
+              onClick={() => switchDataMode('SIMULATED')}
+              className={`rounded px-2 py-0.5 transition ${
+                dataMode === 'SIMULATED'
+                  ? 'bg-amber-500/20 text-amber-200'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              SIMULATED
+            </button>
+            <button
+              type="button"
+              onClick={() => switchDataMode('LIVE')}
+              className={`inline-flex items-center gap-1 rounded px-2 py-0.5 transition ${
+                dataMode === 'LIVE'
+                  ? 'bg-emerald-500/20 text-emerald-200'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Radio className="h-2.5 w-2.5" />
+              LIVE
+            </button>
+          </div>
 
           <div className="h-4 w-px bg-slate-800" />
 
@@ -79,6 +104,17 @@ export function PresenterBar() {
             <span>Inject Anomaly</span>
           </button>
 
+          {dataMode === 'LIVE' && (
+            <button
+              type="button"
+              onClick={() => void flushLiveWindow()}
+              className="inline-flex items-center gap-1 rounded-md border border-cyan-400/40 bg-cyan-500/15 px-2 py-1 font-medium text-cyan-200 hover:bg-cyan-500/25"
+              title="Close active backend window and run Sentinel scouts now"
+            >
+              <span>Flush Window</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => vegaSource.jumpToStage('council')}
@@ -98,18 +134,20 @@ export function PresenterBar() {
 
           <div className="h-4 w-px bg-slate-800" />
 
-          <button
-            type="button"
-            onClick={() => vegaSource.reset('benign-control')}
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium transition ${
-              scenarioId === 'benign-control'
-                ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
-                : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-400/40'
-            }`}
-          >
-            <ShieldCheck className="h-3 w-3" />
-            <span>Benign</span>
-          </button>
+          {dataMode === 'SIMULATED' && (
+            <button
+              type="button"
+              onClick={() => vegaSource.reset('benign-control')}
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium transition ${
+                scenarioId === 'benign-control'
+                  ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
+                  : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-400/40'
+              }`}
+            >
+              <ShieldCheck className="h-3 w-3" />
+              <span>Benign</span>
+            </button>
+          )}
 
           <button
             type="button"
