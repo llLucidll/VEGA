@@ -1,0 +1,1 @@
+wiat but on local why are there hardcoded nodes then if we are currently only running the script on m one local machine, shouldnt it be hooked up?
