@@ -1,0 +1,1 @@
+lets go ahead and set up redis installed as well
