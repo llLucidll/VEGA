@@ -1,0 +1,1 @@
+are the tests passing for the component you just wrote btw
