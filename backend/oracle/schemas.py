@@ -71,18 +71,24 @@ class OracleRequest(BaseModel):
 class ProsecutorOpinion(BaseModel):
     score: float = Field(description="0.0-1.0 likelihood this machine is compromised")
     reason: str = Field(description="One sentence citing specific findings")
+    cited_finding_ids: list[str] = Field(description="finding_ids from the telemetry supporting the score; empty if nothing suspicious")
+    cited_event_ids: list[str] = Field(description="event_ids from the telemetry supporting the score; empty if nothing suspicious")
+    counterpoint: str = Field(description="The strongest fact against compromise")
 
 
 class DefenderOpinion(BaseModel):
     score: float = Field(description="0.0-1.0 plausibility of an innocent explanation")
     hypothesis: str = Field(description="The best innocent explanation, as a short phrase")
     reason: str = Field(description="One sentence explaining why it does or does not fit")
+    cited_fact_ids: list[str] = Field(description="ORG-* organization fact IDs relied on or checked")
+    counterpoint: str = Field(description="The strongest fact against the innocent explanation")
 
 
 class StewardOpinion(BaseModel):
     allowed: bool = Field(description="Whether policy allows containing this machine")
     policy_ids: list[str] = Field(description="IDs of the policies relied on")
     reason: str = Field(description="One sentence")
+    counterpoint: str = Field(description="The strongest policy reason to hold back")
 
 class CouncilOpinions(BaseModel):
     """All three members' opinions for one VM, returned by a single model call."""
@@ -99,6 +105,10 @@ class VmVerdict(BaseModel):
     defender: DefenderOpinion | None
     steward: StewardOpinion | None
     failures: list[str] = Field(default_factory=list)
+    # How the arbiter decided (for the UI): rule ID, plain-English reason, citation problems found.
+    rule: str = ""
+    rule_text: str = ""
+    citation_errors: list[str] = Field(default_factory=list)
 
 
 # ---------- Output (to Warden / UI) ----------
