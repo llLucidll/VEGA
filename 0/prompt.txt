@@ -1,0 +1,1 @@
+i agree with all your mentioned suggestions for alignment. all good calls. For the frontend tech stack, this is important since we want the UI to look fluid and cool, what do you recommend before we set up the TS contracts and start scaffolding
