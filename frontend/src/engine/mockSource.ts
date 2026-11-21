@@ -373,4 +373,4 @@ class MockScenarioSource implements VegaDataSource {
   }
 }
 
-export const vegaSource: VegaDataSource = new MockScenarioSource()
+export const mockSource: VegaDataSource = new MockScenarioSource()

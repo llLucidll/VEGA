@@ -1,0 +1,26 @@
+[project]
+name = "vega-backend"
+version = "0.1.0"
+description = "VEGA autonomous security monitoring backend (Ephemeral Streams, Sentinel Swarm, Oracle, Warden)"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "google-genai>=1.0,<2",
+  "httpx>=0.27",
+  "pydantic>=2,<3",
+  "pydantic-settings>=2,<3",
+  "redis>=5,<6",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+testpaths = ["tests"]

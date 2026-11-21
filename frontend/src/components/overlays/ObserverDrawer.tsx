@@ -2,7 +2,7 @@ import { MessageSquareCode, Send, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { SCENARIOS } from '../../data/scenarios'
-import { vegaSource } from '../../engine/mockSource'
+import { vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 export function ObserverDrawer() {

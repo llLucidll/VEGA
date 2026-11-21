@@ -1,5 +1,5 @@
 import { Activity, Clock, Command, Lock, Radio, ShieldAlert } from 'lucide-react'
-import { vegaSource } from '../../engine/mockSource'
+import { vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 function formatTtl(seconds: number): string {
@@ -15,6 +15,7 @@ export function TopHud() {
   const ttlSecondsRemaining = useVegaStore((s) => s.ttlSecondsRemaining)
   const councilSignal = useVegaStore((s) => s.councilSignal)
   const dataMode = useVegaStore((s) => s.dataMode)
+  const liveStatus = useVegaStore((s) => s.liveStatus)
   const setStage = useVegaStore((s) => s.setStage)
   const setObserverOpen = useVegaStore((s) => s.setObserverOpen)
   const observerOpen = useVegaStore((s) => s.observerOpen)
@@ -28,9 +29,23 @@ export function TopHud() {
           ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
           : 'border-red-500/60 bg-red-500/20 text-red-300 animate-pulse'
 
+  const modeBadgeClass =
+    dataMode === 'LIVE'
+      ? liveStatus === 'connected'
+        ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
+        : liveStatus === 'connecting'
+          ? 'border-amber-400/40 bg-amber-500/15 text-amber-300'
+          : 'border-red-400/40 bg-red-500/15 text-red-300'
+      : 'border-amber-400/30 bg-amber-500/10 text-amber-300'
+
+  const modeBadgeText =
+    dataMode === 'LIVE'
+      ? `LIVE • ${liveStatus.toUpperCase()} • DRY-RUN`
+      : 'SIMULATED • DRY-RUN'
+
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#060a14]/90 px-5 backdrop-blur-md">
-      {/* Brand + Simulation Guardrail */}
+      {/* Brand + Simulation/Live Guardrail */}
       <div className="flex items-center gap-3.5">
         <button
           type="button"
@@ -49,9 +64,11 @@ export function TopHud() {
           SENTINEL • ORACLE • WARDEN
         </span>
 
-        <span className="hidden items-center gap-1.5 rounded border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 font-mono-tabular text-[10px] font-medium tracking-wider text-amber-300 lg:inline-flex">
+        <span
+          className={`hidden items-center gap-1.5 rounded border px-2 py-0.5 font-mono-tabular text-[10px] font-medium tracking-wider lg:inline-flex ${modeBadgeClass}`}
+        >
           <Radio className="h-3 w-3" />
-          {dataMode} • DRY-RUN
+          {modeBadgeText}
         </span>
       </div>
 

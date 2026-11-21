@@ -25,8 +25,25 @@ export interface ObserverMessage {
   timestamp: string
 }
 
+export interface BackendStateSnapshot {
+  threat_mode: ThreatMode
+  active_window_id: string
+  ttl_seconds_remaining: number
+  nodes: MonitoredNode[]
+  edges: NetworkEdge[]
+  windows: Window[]
+  events: StoredEvent[]
+  findings: ScoutFinding[]
+  council_signal: CouncilSignal | null
+  oracle_assessment: OracleAssessment | null
+  warden_decision: WardenDecision | null
+}
+
+export type LiveConnectionStatus = 'disconnected' | 'connecting' | 'connected'
+
 interface VegaState {
   dataMode: 'SIMULATED' | 'LIVE'
+  liveStatus: LiveConnectionStatus
   scenarioId: ScenarioId
   stage: VegaStage
   threatMode: ThreatMode
@@ -54,6 +71,10 @@ interface VegaState {
   presenterOpen: boolean
 
   // Actions
+  setDataMode: (mode: 'SIMULATED' | 'LIVE') => void
+  setLiveStatus: (status: LiveConnectionStatus) => void
+  resetLiveBaseline: () => void
+  hydrateSnapshot: (snapshot: BackendStateSnapshot) => void
   loadScenario: (scenarioId: ScenarioId) => void
   setStage: (stage: VegaStage) => void
   setThreatMode: (mode: ThreatMode) => void
@@ -63,6 +84,8 @@ interface VegaState {
   tickTtl: (deltaSec: number) => void
   pushEvent: (event: StoredEvent) => void
   pushFinding: (finding: ScoutFinding) => void
+  markEventsSuspicious: (eventIds: string[]) => void
+  upsertWindow: (window: Window) => void
   setCouncilSignal: (signal: CouncilSignal | null) => void
   setOracleAssessment: (assessment: OracleAssessment | null) => void
   setWardenDecision: (decision: WardenDecision | null) => void
@@ -87,6 +110,7 @@ const initialScenario = SCENARIOS['sev1-exfil']
 
 export const useVegaStore = create<VegaState>((set) => ({
   dataMode: 'SIMULATED',
+  liveStatus: 'disconnected',
   scenarioId: initialScenario.id,
   stage: 'panopticon',
   threatMode: 'WATCH',
@@ -112,6 +136,69 @@ export const useVegaStore = create<VegaState>((set) => ({
   observerOpen: false,
   observerMessages: [],
   presenterOpen: false,
+
+  setDataMode: (dataMode) => set({ dataMode }),
+  setLiveStatus: (liveStatus) => set({ liveStatus }),
+
+  resetLiveBaseline: () =>
+    set({
+      stage: 'panopticon',
+      threatMode: 'WATCH',
+      nodes: [
+        {
+          source_id: 'vega-core',
+          pseudonym: 'cluster-hub',
+          role: 'VEGA Ingest & Swarm Hub',
+          cluster: 'core',
+          status: 'healthy',
+          heartbeat_age_sec: 0,
+          identity_sealed: false,
+        },
+      ],
+      edges: [],
+      windows: [],
+      activeWindowId: 'W-1000',
+      events: [],
+      findings: [],
+      councilSignal: null,
+      oracleAssessment: null,
+      wardenDecision: null,
+      selectedNodeId: null,
+      selectedEventId: null,
+      chronosCursorIndex: null,
+      observerMessages: [],
+    }),
+
+  hydrateSnapshot: (snapshot) =>
+    set((state) => {
+      const flaggedIds = new Set<string>()
+      for (const f of snapshot.findings) {
+        for (const eid of f.evidence_event_ids) flaggedIds.add(eid)
+      }
+      if (snapshot.council_signal) {
+        for (const eid of snapshot.council_signal.evidence_event_ids) flaggedIds.add(eid)
+      }
+      const events = snapshot.events.map((ev) =>
+        flaggedIds.has(ev.event_id) ? { ...ev, suspicious: true } : ev,
+      )
+      return {
+        threatMode: snapshot.threat_mode,
+        activeWindowId: snapshot.active_window_id,
+        ttlSecondsRemaining: snapshot.ttl_seconds_remaining,
+        nodes: snapshot.nodes,
+        edges: snapshot.edges,
+        windows: snapshot.windows,
+        events,
+        findings: snapshot.findings,
+        councilSignal: snapshot.council_signal,
+        oracleAssessment: snapshot.oracle_assessment,
+        wardenDecision: snapshot.warden_decision,
+        selectedNodeId:
+          state.selectedNodeId && snapshot.nodes.some((n) => n.source_id === state.selectedNodeId)
+            ? state.selectedNodeId
+            : null,
+      }
+    }),
 
   loadScenario: (scenarioId) => {
     const sc = SCENARIOS[scenarioId]
@@ -165,13 +252,66 @@ export const useVegaStore = create<VegaState>((set) => ({
   pushEvent: (event) =>
     set((state) => {
       if (state.events.some((e) => e.event_id === event.event_id)) return state
-      return { events: [...state.events, event] }
+      let nodes = state.nodes
+      let edges = state.edges
+      if (!nodes.some((n) => n.source_id === event.source_id)) {
+        nodes = [
+          ...nodes,
+          {
+            source_id: event.source_id,
+            pseudonym: `subj-${String(nodes.length).padStart(3, '0')}`,
+            role: 'Monitored Endpoint',
+            cluster: 'eng',
+            status: 'healthy',
+            heartbeat_age_sec: 1,
+            identity_sealed: true,
+          },
+        ]
+        edges = [
+          ...edges,
+          {
+            id: `e-core-${event.source_id}`,
+            from: event.source_id,
+            to: 'vega-core',
+            channel: event.channel,
+          },
+        ]
+      }
+      return { events: [...state.events, event], nodes, edges }
     }),
 
   pushFinding: (finding) =>
     set((state) => {
       if (state.findings.some((f) => f.finding_id === finding.finding_id)) return state
-      return { findings: [...state.findings, finding] }
+      const flagged = new Set(finding.evidence_event_ids)
+      return {
+        findings: [...state.findings, finding],
+        events: state.events.map((ev) =>
+          flagged.has(ev.event_id) ? { ...ev, suspicious: true } : ev,
+        ),
+      }
+    }),
+
+  markEventsSuspicious: (eventIds) =>
+    set((state) => {
+      const flagged = new Set(eventIds)
+      return {
+        events: state.events.map((ev) =>
+          flagged.has(ev.event_id) ? { ...ev, suspicious: true } : ev,
+        ),
+      }
+    }),
+
+  upsertWindow: (window) =>
+    set((state) => {
+      const exists = state.windows.some((w) => w.id === window.id)
+      const windows = exists
+        ? state.windows.map((w) => (w.id === window.id ? window : w))
+        : [...state.windows, window]
+      return {
+        windows,
+        activeWindowId: window.status === 'collecting' ? window.id : state.activeWindowId,
+      }
     }),
 
   setCouncilSignal: (councilSignal) => set({ councilSignal }),

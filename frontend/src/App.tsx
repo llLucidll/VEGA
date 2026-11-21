@@ -7,15 +7,43 @@ import { BlackoutOverlay } from './components/stages/BlackoutOverlay'
 import { CouncilView } from './components/stages/CouncilView'
 import { GhostProtocolPanel } from './components/stages/GhostProtocolPanel'
 import { PanopticonCanvas } from './components/stages/PanopticonCanvas'
-import { vegaSource } from './engine/mockSource'
+import { switchDataMode, vegaSource } from './engine/sourceManager'
 import { useVegaStore } from './store/useVegaStore'
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
 export function App() {
   const threatMode = useVegaStore((s) => s.threatMode)
 
   useEffect(() => {
-    vegaSource.start('sev1-exfil')
-    return () => vegaSource.stop()
+    let cancelled = false
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 500)
+
+    fetch(`${API_BASE}/health`, { signal: controller.signal })
+      .then((res) => {
+        if (cancelled) return
+        if (res.ok) {
+          switchDataMode('LIVE', true)
+        } else {
+          switchDataMode('SIMULATED', true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          switchDataMode('SIMULATED', true)
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId)
+      })
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      window.clearTimeout(timeoutId)
+      vegaSource.stop()
+    }
   }, [])
 
   useEffect(() => {
