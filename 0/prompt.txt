@@ -1,0 +1,1 @@
+is Gnome Boxes a better option for running VM's? VMWare is giving me some annoying trouble
