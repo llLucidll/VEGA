@@ -1,0 +1,263 @@
+{
+    "signal": {
+        "signal_id": "sig-sev1-3vm",
+        "window_id": "w-0200",
+        "severity": "SEV1",
+        "summary": "Coordinated activity across vm-a, vm-b, vm-c in window w-0200",
+        "rationale": "Three hosts produced high-volume or unapproved network activity within 70 seconds; two share an unapproved external domain.",
+        "source_ids": [
+            "vm-a",
+            "vm-b",
+            "vm-c"
+        ],
+        "finding_refs": [
+            "fnd-a1",
+            "fnd-a2",
+            "fnd-a3",
+            "fnd-b1",
+            "fnd-c1",
+            "fnd-c2",
+            "fnd-c3"
+        ],
+        "evidence_event_ids": [
+            "evt-a1",
+            "evt-a2",
+            "evt-a3",
+            "evt-a4",
+            "evt-b1",
+            "evt-c1",
+            "evt-c2",
+            "evt-c3"
+        ],
+        "escalation_rule": "multi-host-window-v1",
+        "snapshot_preserved": true,
+        "created_at": "2026-11-21T02:01:35Z"
+    },
+    "findings": [
+        {
+            "finding_id": "fnd-a1",
+            "window_id": "w-0200",
+            "source_id": "vm-a",
+            "channel": "network",
+            "signal": "unapproved_domain",
+            "rationale": "First-seen external domain x9-update.net resolved to 198.51.100.44",
+            "evidence_event_ids": [
+                "evt-a1"
+            ],
+            "confidence": "high",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        },
+        {
+            "finding_id": "fnd-a2",
+            "window_id": "w-0200",
+            "source_id": "vm-a",
+            "channel": "process",
+            "signal": "admin_user_created",
+            "rationale": "Local admin account created interactively, outside IT provisioning",
+            "evidence_event_ids": [
+                "evt-a2"
+            ],
+            "confidence": "high",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        },
+        {
+            "finding_id": "fnd-a3",
+            "window_id": "w-0200",
+            "source_id": "vm-a",
+            "channel": "file",
+            "signal": "key_material_staged",
+            "rationale": "Production key directory archived to hidden temp path, then 48 MB sent externally",
+            "evidence_event_ids": [
+                "evt-a3",
+                "evt-a4"
+            ],
+            "confidence": "high",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        },
+        {
+            "finding_id": "fnd-b1",
+            "window_id": "w-0200",
+            "source_id": "vm-b",
+            "channel": "network",
+            "signal": "large_upload",
+            "rationale": "4.2 GB upload during the incident window",
+            "evidence_event_ids": [
+                "evt-b1"
+            ],
+            "confidence": "medium",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        },
+        {
+            "finding_id": "fnd-c1",
+            "window_id": "w-0200",
+            "source_id": "vm-c",
+            "channel": "network",
+            "signal": "unapproved_domain",
+            "rationale": "Same first-seen domain x9-update.net as vm-a",
+            "evidence_event_ids": [
+                "evt-c1"
+            ],
+            "confidence": "high",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        },
+        {
+            "finding_id": "fnd-c2",
+            "window_id": "w-0200",
+            "source_id": "vm-c",
+            "channel": "process",
+            "signal": "credential_dump_tool",
+            "rationale": "Credential-dumping binary run from interactive shell",
+            "evidence_event_ids": [
+                "evt-c2"
+            ],
+            "confidence": "high",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        },
+        {
+            "finding_id": "fnd-c3",
+            "window_id": "w-0200",
+            "source_id": "vm-c",
+            "channel": "network",
+            "signal": "shared_c2_egress",
+            "rationale": "Outbound traffic to 198.51.100.44, the IP vm-a exfiltrated to",
+            "evidence_event_ids": [
+                "evt-c3"
+            ],
+            "confidence": "high",
+            "detector_version": "scout-v0.3",
+            "created_at": "2026-11-21T02:01:30Z"
+        }
+    ],
+    "events": [
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-a1",
+            "source_id": "vm-a",
+            "channel": "network",
+            "event_time": "2026-11-21T02:00:41Z",
+            "payload": {
+                "query": "x9-update.net",
+                "resolved": "198.51.100.44",
+                "first_seen_in_org": true
+            },
+            "ingested_at": "2026-11-21T02:00:41Z",
+            "summary": "DNS lookup of unapproved domain x9-update.net"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-a2",
+            "source_id": "vm-a",
+            "channel": "process",
+            "event_time": "2026-11-21T02:00:52Z",
+            "payload": {
+                "cmd": "useradd -m -G sudo svc_upd",
+                "parent": "bash",
+                "tty": "pts/0"
+            },
+            "ingested_at": "2026-11-21T02:00:52Z",
+            "summary": "Interactive creation of local admin svc_upd"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-a3",
+            "source_id": "vm-a",
+            "channel": "file",
+            "event_time": "2026-11-21T02:01:03Z",
+            "payload": {
+                "path": "/tmp/.cache-bundle.tar.gz",
+                "source_dir": "/srv/secrets/prod-keys/",
+                "bytes": 48211000
+            },
+            "ingested_at": "2026-11-21T02:01:03Z",
+            "summary": "Production keys archived to hidden temp file"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-a4",
+            "source_id": "vm-a",
+            "channel": "network",
+            "event_time": "2026-11-21T02:01:09Z",
+            "payload": {
+                "dst": "198.51.100.44",
+                "port": 443,
+                "bytes_out": 48211000
+            },
+            "ingested_at": "2026-11-21T02:01:09Z",
+            "summary": "48 MB outbound to external ASN"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-b1",
+            "source_id": "vm-b",
+            "channel": "network",
+            "event_time": "2026-11-21T02:00:12Z",
+            "payload": {
+                "dst": "backup.corp.internal",
+                "dst_ip": "10.24.8.15",
+                "port": 443,
+                "bytes_out": 4509715660,
+                "user": "svc_backup",
+                "unit": "vega-backup.service"
+            },
+            "ingested_at": "2026-11-21T02:00:12Z",
+            "summary": "4.2 GB upload to backup.corp.internal"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-c1",
+            "source_id": "vm-c",
+            "channel": "network",
+            "event_time": "2026-11-21T02:00:58Z",
+            "payload": {
+                "query": "x9-update.net",
+                "resolved": "198.51.100.44",
+                "first_seen_in_org": true
+            },
+            "ingested_at": "2026-11-21T02:00:58Z",
+            "summary": "DNS lookup of unapproved domain x9-update.net"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-c2",
+            "source_id": "vm-c",
+            "channel": "process",
+            "event_time": "2026-11-21T02:01:14Z",
+            "payload": {
+                "cmd": "./lsass_dump --all-users",
+                "parent": "bash",
+                "hash": "9f2c...e1",
+                "tty": "pts/1"
+            },
+            "ingested_at": "2026-11-21T02:01:14Z",
+            "summary": "Credential-dumping tool executed"
+        },
+        {
+            "schema_version": 1,
+            "run_id": "run-demo-3vm",
+            "event_id": "evt-c3",
+            "source_id": "vm-c",
+            "channel": "network",
+            "event_time": "2026-11-21T02:01:21Z",
+            "payload": {
+                "dst": "198.51.100.44",
+                "port": 443,
+                "bytes_out": 1200000
+            },
+            "ingested_at": "2026-11-21T02:01:21Z",
+            "summary": "Outbound connection to same external IP as vm-a"
+        }
+    ]
+}
