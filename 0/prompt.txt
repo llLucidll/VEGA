@@ -1,0 +1,1 @@
+yes standardzie and go ahead and scaffold the project, remember we will have both backend and frontend in this one repo
