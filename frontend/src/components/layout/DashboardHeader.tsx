@@ -34,7 +34,7 @@ export function DashboardHeader({ onRecenter, onHeightChange }: DashboardHeaderP
               <div className="font-mono-tabular text-[10px] tracking-widest text-sky-300 uppercase">
                 01 / Sentinel Panopticon
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-slate-300">
+              <div className="mt-1.5 flex flex-wrap gap-x-3 font-display text-[10px] tracking-[0.04em] text-slate-300 lowercase">
                 <span>File</span>
                 <span>Network</span>
                 <span>Process</span>

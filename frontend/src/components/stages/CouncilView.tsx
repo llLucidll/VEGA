@@ -1,16 +1,15 @@
-import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, CheckCircle2, Eye, Shield, XCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { vegaSource } from '../../engine/sourceManager'
 import { useVegaEyeState } from '../../store/useVegaEyeState'
 import { useVegaStore } from '../../store/useVegaStore'
 import { VegaEye } from '../layout/VegaEye'
+import { OracleAssessmentPanel } from './OracleAssessmentPanel'
 
 export function CouncilView() {
   const eyeState = useVegaEyeState()
   const stage = useVegaStore((s) => s.stage)
   const councilSignal = useVegaStore((s) => s.councilSignal)
-  const oracleAssessment = useVegaStore((s) => s.oracleAssessment)
-  const findings = useVegaStore((s) => s.findings)
   const selectEvent = useVegaStore((s) => s.selectEvent)
   const setChronosExpanded = useVegaStore((s) => s.setChronosExpanded)
   const setStage = useVegaStore((s) => s.setStage)
@@ -32,9 +31,22 @@ export function CouncilView() {
                 <VegaEye state={eyeState} className="h-auto w-7 shrink-0" />
                 03 / ORACLE — THE COUNCIL
               </div>
-              <h1 className="mt-1 text-xl font-bold text-white">
-                Autonomous Multi-Agent Deliberation
+              <h1 className="mt-1.5 font-display text-base text-slate-100">
+                Autonomous Multi-Agent Tribunal
               </h1>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {councilSignal ? (
+                  <>
+                    Judging{' '}
+                    <span className="text-slate-200">
+                      {councilSignal.source_ids.slice(0, 4).join(', ')}
+                      {councilSignal.source_ids.length > 4 && ` +${councilSignal.source_ids.length - 4}`}
+                    </span>
+                  </>
+                ) : (
+                  'Awaiting a SEV1 from Sentinel'
+                )}
+              </p>
             </div>
 
             <div className="flex items-center gap-2.5">
@@ -50,7 +62,7 @@ export function CouncilView() {
               <button
                 type="button"
                 onClick={() => vegaSource.jumpToStage('blackout')}
-                className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-semibold tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
+                className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-medium tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
               >
                 <span>Escalate to Warden Gate</span>
                 <ArrowRight className="h-4 w-4" />
@@ -58,126 +70,57 @@ export function CouncilView() {
             </div>
           </div>
 
-          {/* Triad Visualization */}
-          <div className="mx-auto mt-5 w-full max-w-6xl">
-            <div className="vega-panel relative overflow-hidden rounded-2xl p-6">
-              <svg
-                viewBox="0 0 900 170"
-                className="pointer-events-none absolute inset-0 h-full w-full opacity-80"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="beam-so" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#a855f7" />
-                  </linearGradient>
-                  <linearGradient id="beam-ow" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#a855f7" />
-                    <stop offset="100%" stopColor="#ef4444" />
-                  </linearGradient>
-                </defs>
-
-                <motion.path
-                  d="M 190 85 C 280 85, 320 85, 410 85"
-                  fill="none"
-                  stroke="url(#beam-so)"
-                  strokeWidth="2.5"
-                  strokeDasharray="8 6"
-                  animate={{ strokeDashoffset: [0, -28] }}
-                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                />
-                <motion.path
-                  d="M 490 85 C 580 85, 620 85, 710 85"
-                  fill="none"
-                  stroke="url(#beam-ow)"
-                  strokeWidth="2.5"
-                  strokeDasharray="8 6"
-                  animate={{ strokeDashoffset: [0, -28] }}
-                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                />
-              </svg>
-
-              <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-                {/* Sentinel Node */}
-                <div className="rounded-xl border border-sky-400/40 bg-sky-950/30 p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 font-mono-tabular text-xs font-bold tracking-wider text-sky-300">
-                      <Eye className="h-4 w-4" />
-                      SENTINEL
-                    </span>
-                    <span className="rounded bg-sky-500/20 px-2 py-0.5 font-mono-tabular text-[10px] text-sky-200">
-                      DETECT & CORRELATE
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-300">
-                    {councilSignal
-                      ? `${findings.length} channel scouts corroborated ${councilSignal.evidence_event_ids.length} events into ${councilSignal.severity}.`
-                      : 'Awaiting correlated window signal…'}
-                  </p>
-                </div>
-
-                {/* Oracle Node */}
-                <div className="rounded-xl border border-purple-400/50 bg-purple-950/35 p-4 shadow-[0_0_30px_rgba(168,85,247,0.18)]">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 font-mono-tabular text-xs font-bold tracking-wider text-purple-300">
-                      <BrainCircuit className="h-4 w-4" />
-                      ORACLE
-                    </span>
-                    <span className="rounded bg-purple-500/20 px-2 py-0.5 font-mono-tabular text-[10px] text-purple-200">
-                      CONTEXT & POLICY
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-300">
-                    {oracleAssessment
-                      ? `Evaluated ${oracleAssessment.cited_policies.length} policies & ruled out benign hypotheses.`
-                      : 'Evaluating organizational policies and historical context…'}
-                  </p>
-                </div>
-
-                {/* Warden Node */}
-                <div className="rounded-xl border border-red-500/40 bg-red-950/25 p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 font-mono-tabular text-xs font-bold tracking-wider text-red-300">
-                      <Shield className="h-4 w-4" />
-                      WARDEN
-                    </span>
-                    <span className="rounded bg-red-500/20 px-2 py-0.5 font-mono-tabular text-[10px] text-red-200">
-                      POLICY GATE (DRY-RUN)
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-300">
-                    {oracleAssessment
-                      ? `Prepared scoped containment: ${oracleAssessment.recommended_action}.`
-                      : 'Standing by for Oracle assessment before policy evaluation.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Evidence & Reasoning Grid */}
-          <div className="mx-auto mt-5 grid w-full max-w-6xl grid-cols-1 gap-5 lg:grid-cols-12">
+          <div className="mx-auto mt-6 grid w-full max-w-6xl grid-cols-1 gap-5 lg:grid-cols-12">
             {/* Left: Sentinel Correlator Report */}
             <div className="vega-panel rounded-2xl p-5 lg:col-span-5">
-              <div className="font-mono-tabular text-[11px] font-semibold tracking-wider text-sky-400 uppercase">
-                Sentinel Correlator Handoff
-              </div>
+              <header className="truncate border-b border-slate-800/80 pb-3">
+                <span className="font-mono-tabular text-[11px] font-medium tracking-wider text-sky-300/90 uppercase">
+                  Sentinel Correlator Handoff{councilSignal && ':'}
+                </span>
+                {councilSignal && (
+                  <span className="ml-1.5 text-[11px] text-slate-500">
+                    {councilSignal.finding_refs.length} {councilSignal.finding_refs.length === 1 ? 'finding' : 'findings'}{' '}
+                    corroborated {councilSignal.evidence_event_ids.length}{' '}
+                    {councilSignal.evidence_event_ids.length === 1 ? 'event' : 'events'}
+                  </span>
+                )}
+              </header>
               {councilSignal ? (
-                <div className="mt-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="rounded border border-red-500/50 bg-red-500/15 px-2 py-0.5 font-mono-tabular text-xs font-bold text-red-300">
-                      {councilSignal.severity} • {councilSignal.window_id}
+                <div className="mt-5 space-y-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-mono-tabular text-[11px] text-red-300/80">
+                      <span
+                        className={councilSignal.severity === 'SEV1' ? 'font-semibold text-red-300' : ''}
+                        style={
+                          councilSignal.severity === 'SEV1'
+                            ? { textShadow: '0 0 8px rgba(248, 113, 113, 0.75), 0 0 18px rgba(239, 68, 68, 0.45)' }
+                            : undefined
+                        }
+                      >
+                        {councilSignal.severity}
+                      </span>
+                      <span className="mx-1.5 text-red-300/40">·</span>
+                      {councilSignal.window_id}
                     </span>
-                    <span className="font-mono-tabular text-[10px] text-slate-400">
+                    <span className="truncate font-mono-tabular text-[10px] text-slate-500">
                       {councilSignal.escalation_rule}
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white">{councilSignal.summary}</h3>
-                  <p className="text-xs leading-relaxed text-slate-300">{councilSignal.rationale}</p>
 
                   <div>
-                    <div className="mb-1.5 font-mono-tabular text-[10px] text-slate-400 uppercase">
-                      Preserved Evidence References (click to inspect in Chronos)
+                    <h3 className="text-sm font-medium text-slate-100">{councilSignal.summary}</h3>
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-400">{councilSignal.rationale}</p>
+                  </div>
+
+                  <div className="border-t border-slate-800 pt-3">
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                      <span className="font-display text-[10px] tracking-[0.04em] text-slate-500 lowercase">
+                        Preserved evidence
+                      </span>
+                      <span className="font-mono-tabular text-[10px] text-slate-600">
+                        click to inspect in Chronos
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {councilSignal.evidence_event_ids.map((eid) => (
@@ -188,7 +131,7 @@ export function CouncilView() {
                             selectEvent(eid)
                             setChronosExpanded(true)
                           }}
-                          className="rounded border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 font-mono-tabular text-[11px] text-sky-200 hover:border-sky-300"
+                          className="rounded border border-slate-800 px-2 py-0.5 font-mono-tabular text-[11px] text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
                         >
                           {eid}
                         </button>
@@ -197,100 +140,14 @@ export function CouncilView() {
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-slate-400">
+                <p className="mt-4 text-xs text-slate-400">
                   No SEV1 signal escalated in the current window.
                 </p>
               )}
             </div>
 
             {/* Right: Oracle Contextual Reasoning */}
-            <div className="vega-panel rounded-2xl p-5 lg:col-span-7">
-              <div className="flex items-center justify-between">
-                <span className="font-mono-tabular text-[11px] font-semibold tracking-wider text-purple-400 uppercase">
-                  Oracle Contextual Assessment
-                </span>
-                {oracleAssessment && (
-                  <span className="font-mono-tabular text-[10px] text-slate-400">
-                    {oracleAssessment.incident_id} • {oracleAssessment.model_version}
-                  </span>
-                )}
-              </div>
-
-              {oracleAssessment ? (
-                <div className="mt-3 space-y-4">
-                  <p className="text-xs leading-relaxed text-slate-200">
-                    {oracleAssessment.assessment}
-                  </p>
-
-                  {/* Competing Explanations */}
-                  <div>
-                    <div className="mb-1.5 font-mono-tabular text-[10px] text-slate-400 uppercase">
-                      Competing Hypotheses Tested
-                    </div>
-                    <div className="space-y-2">
-                      {oracleAssessment.competing_explanations.map((exp) => (
-                        <div
-                          key={exp.hypothesis}
-                          className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-medium text-slate-200">
-                              {exp.hypothesis}
-                            </span>
-                            <span className="inline-flex items-center gap-1 font-mono-tabular text-[10px] text-amber-300 uppercase">
-                              <XCircle className="h-3 w-3" />
-                              {exp.status.replace('_', ' ')}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-[11px] text-slate-400">{exp.reason}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Cited Policies */}
-                  <div>
-                    <div className="mb-1.5 font-mono-tabular text-[10px] text-slate-400 uppercase">
-                      Cited Organizational Policies
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {oracleAssessment.cited_policies.map((pol) => (
-                        <div
-                          key={pol.policy_id}
-                          className="rounded-xl border border-purple-400/25 bg-purple-950/20 p-2.5"
-                        >
-                          <div className="flex items-center gap-1.5 font-mono-tabular text-[11px] font-semibold text-purple-200">
-                            <BookOpen className="h-3 w-3" />
-                            {pol.policy_id} ({pol.version})
-                          </div>
-                          <div className="mt-0.5 text-xs font-medium text-slate-200">
-                            {pol.title}
-                          </div>
-                          <p className="mt-1 text-[11px] text-slate-400">{pol.excerpt}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Recommended Scoped Action */}
-                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-400/30 bg-emerald-950/20 p-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                    <div className="text-xs">
-                      <div className="font-semibold text-emerald-200">
-                        Recommended Action: {oracleAssessment.recommended_action}
-                      </div>
-                      <div className="mt-0.5 text-slate-300">
-                        Scope: {oracleAssessment.recommended_scope}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-slate-400">
-                  Oracle activates only after Sentinel confirms a SEV1 incident.
-                </p>
-              )}
-            </div>
+            <OracleAssessmentPanel />
           </div>
         </motion.section>
       )}

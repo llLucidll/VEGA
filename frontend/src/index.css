@@ -11,6 +11,7 @@
     --vega-warden: #ef4444;
     --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-display: 'Michroma', 'Space Grotesk', ui-sans-serif, sans-serif;
   }
 
   [data-threat-mode='WATCH'] {
@@ -43,6 +44,12 @@
 .font-mono-tabular {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* Michroma: wide display face for titles and short headline lines only (one weight, 400). */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
 }
 
 .vega-panel {
