@@ -386,7 +386,7 @@ export const useVegaStore = create<VegaState>((set) => ({
     set((state) => ({ observerMessages: [...state.observerMessages, msg] })),
   setPresenterOpen: (presenterOpen) => set({ presenterOpen }),
   setZoomPercent: (percent) =>
-    set({ zoomPercent: Math.max(50, Math.min(100, Math.round(percent))) }),
+    set({ zoomPercent: Math.max(50, Math.min(150, Math.round(percent))) }),
 
   appendWardenAudit: (entry) =>
     set((state) => {

@@ -227,7 +227,7 @@ export function PresenterBar() {
               type="button"
               aria-label="Zoom in"
               title="Zoom in (+)"
-              disabled={zoomPercent >= 100}
+              disabled={zoomPercent >= 150}
               onClick={() => setZoomPercent(zoomPercent + 10)}
               className="grid h-6 w-6 place-items-center rounded text-slate-300 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
             >

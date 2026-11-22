@@ -17,7 +17,9 @@ type CanvasDrag =
   | { kind: 'pan'; pointerId: number; last: Point }
   | { kind: 'node'; pointerId: number; nodeId: string; start: Point; offset: Point; moving: boolean }
 
+const MIN_ZOOM = 50
 const DEFAULT_ZOOM = 100
+const MAX_ZOOM = 150
 const ZOOM_STEP = 10
 
 const CORE_ARTWORK = {
@@ -230,13 +232,13 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
           break
         case '-': {
           const s = useVegaStore.getState()
-          s.setZoomPercent(s.zoomPercent - ZOOM_STEP)
+          s.setZoomPercent(Math.max(MIN_ZOOM, s.zoomPercent - ZOOM_STEP))
           break
         }
         case '=':
         case '+': {
           const s = useVegaStore.getState()
-          s.setZoomPercent(s.zoomPercent + ZOOM_STEP)
+          s.setZoomPercent(Math.min(MAX_ZOOM, s.zoomPercent + ZOOM_STEP))
           break
         }
         case '0':
@@ -302,8 +304,8 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
             frame.x = Math.max(frame.x, Math.abs(point.x) + card.width / 2)
             frame.y = Math.max(frame.y, Math.abs(point.y) + card.height / 2)
           }
-          // Fit the pentagram and badges, but keep dense layouts readable and pannable.
-          fitZoom = Math.max(0.55, Math.min(1, (size.width / 2 - 24) / frame.x, (size.height / 2 - 98) / frame.y))
+          // Keep the default view zoomed in enough to read nodes clearly; use Shift+D zoom-out to frame the full rune.
+          fitZoom = Math.max(0.85, Math.min(1, (size.width / 2 - 24) / frame.x, (size.height / 2 - 98) / frame.y))
           if (!manualLayout.current) positionsRef.current = positions
         }
         if (target) manualLayout.current = true
