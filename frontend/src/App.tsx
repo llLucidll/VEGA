@@ -9,8 +9,6 @@ import { PanopticonCanvas, type PanopticonHandle } from './components/stages/Pan
 import { switchDataMode, vegaSource } from './engine/sourceManager'
 import { useVegaStore } from './store/useVegaStore'
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
-
 export function App() {
   const topology = useRef<PanopticonHandle>(null)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -24,34 +22,9 @@ export function App() {
   }, [wardenDecisionId, setStage])
 
   useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => controller.abort(), 500)
-
-    fetch(`${API_BASE}/health`, { signal: controller.signal })
-      .then((res) => {
-        if (cancelled) return
-        if (res.ok) {
-          switchDataMode('LIVE', true)
-        } else {
-          switchDataMode('SIMULATED', true)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          switchDataMode('SIMULATED', true)
-        }
-      })
-      .finally(() => {
-        window.clearTimeout(timeoutId)
-      })
-
-    return () => {
-      cancelled = true
-      controller.abort()
-      window.clearTimeout(timeoutId)
-      vegaSource.stop()
-    }
+    // A backend restart should not leave an open dashboard stuck in replay mode.
+    switchDataMode('LIVE', true)
+    return () => vegaSource.stop()
   }, [])
 
   useEffect(() => {

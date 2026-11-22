@@ -119,17 +119,27 @@
 }
 
 [data-eye-state='idle'],
-[data-eye-state='alert'],
-[data-core-state='idle'],
-[data-core-state='alert'] {
+[data-eye-state='alert'] {
   --vega-state-color: #6ee7b7;
 }
 
-[data-eye-state='investigating'],
-[data-core-state='investigating'] {
+[data-eye-state='investigating'] {
   --vega-state-color: var(--vega-oracle);
 }
 
+[data-core-state='idle'] {
+  --vega-state-color: #4ade80;
+}
+
+[data-core-state='alert'] {
+  --vega-state-color: #38bdf8;
+}
+
+[data-core-state='investigating'] {
+  --vega-state-color: #c084fc;
+}
+
+[data-core-state='warden'],
 [data-eye-state='warden'] {
   --vega-state-color: var(--color-red-400);
 }

@@ -1,5 +1,8 @@
 import { Lock, Minus, Plus, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
+import vegaCoreBlue from '../../assets/vega-core-idle.png'
+import vegaCoreGreen from '../../assets/vega-core-alert.png'
+import vegaCorePurple from '../../assets/vega-core-council.png'
 import type { MonitoredNode } from '../../contracts/vega'
 import { drawTopologyDots, type TopologyHover } from '../../engine/drawTopologyDots'
 import { particleBus } from '../../engine/particleBus'
@@ -291,7 +294,11 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
       const positions = positionsRef.current
       if (state.stage !== 'panopticon') hoverTarget = null
       const isGhost = state.stage === 'ghost_protocol'
-      const focusId = state.selectedNodeId ?? 'vm-a'
+      const focusId =
+        state.selectedNodeId ??
+        state.findings.at(-1)?.source_id ??
+        state.nodes.find((n) => n.source_id !== 'vega-core')?.source_id ??
+        'vega-core'
       const focusPos = positions.get(focusId)
 
       // Smooth camera target: zoom into selected node and shift left to leave room for Ghost Protocol drawer
@@ -538,12 +545,37 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
               onClick={() => handleNodeClick(node)}
               className={`group invisible absolute top-0 left-0 flex items-center gap-2 border backdrop-blur-md ${ringClass} ${
                 isCore
-                  ? 'size-40 cursor-default flex-col justify-center rounded-full px-5 text-center transition-[background-color,border-color,box-shadow] motion-reduce:transition-none'
+                  ? 'size-52 cursor-default flex-col justify-center overflow-hidden rounded-full px-5 text-center transition-[background-color,border-color,box-shadow] motion-reduce:transition-none'
                   : `rounded-xl px-2.5 py-1.5 text-left transition-colors ${stage === 'panopticon' ? 'cursor-grab data-[moving=true]:cursor-grabbing' : 'cursor-pointer'}`
               }`}
             >
+              {isCore && (
+                <>
+                  <img
+                    src={
+                      eyeState === 'investigating'
+                        ? vegaCorePurple
+                        : eyeState === 'alert'
+                          ? vegaCoreBlue
+                          : vegaCoreGreen
+                    }
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    className="pointer-events-none absolute inset-0 size-full scale-105 rounded-full object-cover opacity-65 select-none"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(5,8,17,0.72)_0%,rgba(5,8,17,0.48)_58%,rgba(5,8,17,0.18)_100%)]"
+                  />
+                </>
+              )}
+
               {isCore ? (
-                <VegaEye state={eyeState} className="h-auto w-22 shrink-0" />
+                <VegaEye
+                  state={eyeState}
+                  className="relative z-10 h-auto w-28 shrink-0 drop-shadow-[0_2px_8px_rgba(5,8,17,0.95)]"
+                />
               ) : (
                 <div className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-black/40">
                   {isIsolated ? (
@@ -556,9 +588,9 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
                 </div>
               )}
 
-              <div className="leading-tight">
+              <div className={`leading-tight ${isCore ? 'relative z-10 drop-shadow-[0_1px_4px_rgba(5,8,17,0.95)]' : ''}`}>
                 <div className={`flex items-center gap-1.5 ${isCore ? 'justify-center' : ''}`}>
-                  <span className={`font-mono-tabular font-semibold text-slate-100 ${isCore ? 'text-xs tracking-wide uppercase' : 'text-[11px]'}`}>
+                  <span className={`font-mono-tabular font-semibold text-slate-100 ${isCore ? 'text-sm tracking-widest uppercase' : 'text-[11px]'}`}>
                     {node.source_id}
                   </span>
                   {node.identity_sealed && (
@@ -571,9 +603,11 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
                     </span>
                   )}
                 </div>
-                <div className={`text-[10px] text-slate-400 ${isCore ? 'mt-1 text-balance' : ''}`}>
-                  {isIsolated ? 'ISOLATED (DRY-RUN)' : node.role}
-                </div>
+                {!isCore && (
+                  <div className="text-[10px] text-slate-400">
+                    {isIsolated ? 'ISOLATED (DRY-RUN)' : node.role}
+                  </div>
+                )}
               </div>
             </button>
           )

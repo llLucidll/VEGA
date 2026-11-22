@@ -14,12 +14,13 @@ import type { VegaDataSource } from './dataSource'
 import { particleBus } from './particleBus'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
+const STREAM_RETRY_MS = 2_000
 
 export class LiveStreamSource implements VegaDataSource {
   readonly mode = 'LIVE' as const
   private eventSource: EventSource | null = null
+  private reconnectTimerId: number | null = null
   private ttlTimerId: number | null = null
-  private stepCounter = 0
 
   start(_scenarioId?: ScenarioId) {
     this.stop()
@@ -29,12 +30,11 @@ export class LiveStreamSource implements VegaDataSource {
     store.resetLiveBaseline()
     particleBus.clear()
 
-    void this.fetchInitialState()
     this.connectSse()
 
     this.ttlTimerId = window.setInterval(() => {
       const s = useVegaStore.getState()
-      if (s.liveStatus === 'connected' && s.isPlaying) {
+      if (s.liveStatus === 'connected' && s.isPlaying && s.events.length > 0) {
         s.tickTtl(1)
       }
     }, 1000)
@@ -45,6 +45,10 @@ export class LiveStreamSource implements VegaDataSource {
       this.eventSource.close()
       this.eventSource = null
     }
+    if (this.reconnectTimerId !== null) {
+      window.clearTimeout(this.reconnectTimerId)
+      this.reconnectTimerId = null
+    }
     if (this.ttlTimerId !== null) {
       window.clearInterval(this.ttlTimerId)
       this.ttlTimerId = null
@@ -53,7 +57,6 @@ export class LiveStreamSource implements VegaDataSource {
   }
 
   reset(_scenarioId?: ScenarioId) {
-    this.stepCounter = 0
     particleBus.clear()
     useVegaStore.getState().setStage('panopticon')
     void fetch(`${API_BASE}/api/demo/reset`, { method: 'POST' })
@@ -81,11 +84,11 @@ export class LiveStreamSource implements VegaDataSource {
   }
 
   injectAnomaly() {
-    void this.sendLiveExfilSequence()
+    // Live mode receives telemetry exclusively from real endpoint producers.
   }
 
   stepNextEvent() {
-    void this.sendSingleLiveEvent()
+    // Live mode receives telemetry exclusively from real endpoint producers.
   }
 
   advanceCue() {
@@ -96,7 +99,7 @@ export class LiveStreamSource implements VegaDataSource {
         state.selectNode(finding.source_id)
         state.setStage('ghost_protocol')
       } else {
-        this.injectAnomaly()
+        void this.flushWindow()
       }
       return
     }
@@ -179,32 +182,32 @@ export class LiveStreamSource implements VegaDataSource {
     await fetch(`${API_BASE}/api/demo/flush-window?wait=true`, { method: 'POST' })
   }
 
-  private async fetchInitialState() {
-    try {
-      const res = await fetch(`${API_BASE}/api/state`)
-      if (!res.ok) return
-      const snap = (await res.json()) as BackendStateSnapshot
-      useVegaStore.getState().hydrateSnapshot(snap)
-    } catch {
-      useVegaStore.getState().setLiveStatus('disconnected')
-    }
-  }
-
   private connectSse() {
     const es = new EventSource(`${API_BASE}/api/stream`)
     this.eventSource = es
 
-    es.onopen = () => {
-      useVegaStore.getState().setLiveStatus('connected')
-    }
-
     es.onerror = () => {
+      if (this.eventSource !== es) return
       useVegaStore.getState().setLiveStatus('disconnected')
+      // EventSource handles transient disconnects. Some HTTP errors close it permanently.
+      if (es.readyState !== EventSource.CLOSED) return
+      this.reconnectTimerId = window.setTimeout(() => {
+        this.reconnectTimerId = null
+        if (this.eventSource !== es) return
+        es.close()
+        useVegaStore.getState().setLiveStatus('connecting')
+        this.connectSse()
+      }, STREAM_RETRY_MS)
     }
 
     es.addEventListener('snapshot', (e) => {
+      if (this.eventSource !== es) return
+      // Bootstrap and resync on the same stream as the deltas. A separate HTTP
+      // snapshot could arrive late and overwrite a newer Council or node update.
       const snap = JSON.parse((e as MessageEvent<string>).data) as BackendStateSnapshot
-      useVegaStore.getState().hydrateSnapshot(snap)
+      const store = useVegaStore.getState()
+      store.hydrateSnapshot(snap)
+      store.setLiveStatus('connected')
     })
 
     es.addEventListener('event', (e) => {
@@ -223,7 +226,9 @@ export class LiveStreamSource implements VegaDataSource {
       const finding = JSON.parse((e as MessageEvent<string>).data) as ScoutFinding
       const store = useVegaStore.getState()
       store.pushFinding(finding)
-      store.updateNodeStatus(finding.source_id, 'elevated')
+      if (store.nodes.find((n) => n.source_id === finding.source_id)?.status === 'healthy') {
+        store.updateNodeStatus(finding.source_id, 'elevated')
+      }
       const edge = store.edges.find((ed) => ed.from === finding.source_id)
       if (edge) store.markEdgeAnomalous(edge.id, true)
       particleBus.spawn(finding.source_id, 'vega-core', finding.channel, true)
@@ -235,9 +240,12 @@ export class LiveStreamSource implements VegaDataSource {
       store.setCouncilSignal(signal)
       store.markEventsSuspicious(signal.evidence_event_ids)
       for (const sid of signal.source_ids) {
-        store.updateNodeStatus(sid, signal.severity === 'SEV1' ? 'compromised' : 'elevated')
+        const status = store.nodes.find((n) => n.source_id === sid)?.status
+        if (status !== 'isolated' && (status !== 'compromised' || signal.severity === 'SEV1')) {
+          store.updateNodeStatus(sid, signal.severity === 'SEV1' ? 'compromised' : 'elevated')
+        }
       }
-      if (signal.severity === 'SEV1') {
+      if (signal.severity === 'SEV1' && store.threatMode === 'WATCH') {
         store.setThreatMode('INVESTIGATE')
       }
     })
@@ -253,120 +261,22 @@ export class LiveStreamSource implements VegaDataSource {
       store.setWardenDecision(decision)
       if (decision.execution_status === 'contained_dry_run') {
         store.setThreatMode('CONTAINED')
-        store.updateNodeStatus('vm-a', 'isolated')
+        const targetIds = new Set<string>(store.councilSignal?.source_ids ?? [])
+        for (const node of store.nodes) {
+          if (
+            node.source_id !== 'vega-core' &&
+            (decision.trusted_target_ref.includes(node.source_id) ||
+              decision.scope.includes(node.source_id))
+          ) {
+            targetIds.add(node.source_id)
+          }
+        }
+        for (const sid of targetIds) {
+          store.updateNodeStatus(sid, 'isolated')
+        }
       } else if (decision.execution_status === 'awaiting_authorization') {
         store.setThreatMode('SEV1_ESCALATION')
       }
     })
-  }
-
-  private async sendSingleLiveEvent() {
-    const samples = [
-      {
-        source_id: 'vm-c',
-        channel: 'process',
-        payload: { cmd: 'systemctl status vega-collector', uid: 1001, exit_code: 0 },
-      },
-      {
-        source_id: 'vm-a',
-        channel: 'file',
-        payload: {
-          op: 'read_burst',
-          path: '/srv/secrets/prod-keys/',
-          file_count: 37,
-          sensitive_marker: 'vault-export-manifest',
-        },
-      },
-      {
-        source_id: 'vm-a',
-        channel: 'process',
-        payload: {
-          cmd: 'tar -czf /tmp/.cache-bundle.tar.gz /srv/secrets/prod-keys',
-          parent: 'bash',
-          pid: 28419,
-        },
-      },
-      {
-        source_id: 'vm-a',
-        channel: 'network',
-        payload: {
-          dst: '198.51.100.44:8443',
-          sni: 'egress-drop.invalid',
-          bytes_out: 48210944,
-          asn: 'AS64512-UNTRUSTED',
-        },
-      },
-    ] as const
-
-    const sample = samples[this.stepCounter % samples.length]
-    this.stepCounter += 1
-
-    await fetch(`${API_BASE}/events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        schema_version: 1,
-        run_id: 'live-ui-demo',
-        event_id: `evt-live-${Date.now()}-${this.stepCounter}`,
-        source_id: sample.source_id,
-        channel: sample.channel,
-        event_time: new Date().toISOString(),
-        payload: sample.payload,
-      }),
-    })
-  }
-
-  private async sendLiveExfilSequence() {
-    const now = new Date().toISOString()
-    const batch = [
-      {
-        source_id: 'vm-a',
-        channel: 'file',
-        payload: {
-          op: 'read_burst',
-          path: '/srv/secrets/prod-keys/',
-          file_count: 37,
-          sensitive_marker: 'vault-export-manifest',
-        },
-      },
-      {
-        source_id: 'vm-a',
-        channel: 'process',
-        payload: {
-          cmd: 'tar -czf /tmp/.cache-bundle.tar.gz /srv/secrets/prod-keys',
-          parent: 'bash',
-          pid: 28419,
-        },
-      },
-      {
-        source_id: 'vm-a',
-        channel: 'network',
-        payload: {
-          dst: '198.51.100.44:8443',
-          sni: 'egress-drop.invalid',
-          bytes_out: 48210944,
-          asn: 'AS64512-UNTRUSTED',
-        },
-      },
-    ]
-
-    for (let i = 0; i < batch.length; i++) {
-      const item = batch[i]
-      await fetch(`${API_BASE}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schema_version: 1,
-          run_id: 'live-ui-demo',
-          event_id: `evt-live-${Date.now()}-${i + 1}`,
-          source_id: item.source_id,
-          channel: item.channel,
-          event_time: now,
-          payload: item.payload,
-        }),
-      })
-    }
-
-    await this.flushWindow()
   }
 }

@@ -27,7 +27,9 @@ export function PresenterBar() {
     stage === 'panopticon'
       ? hasFindings
         ? 'Next: Inspect Node'
-        : 'Next: Inject Anomaly'
+        : dataMode === 'LIVE'
+          ? 'Next: Flush Window'
+          : 'Next: Inject Anomaly'
       : stage === 'ghost_protocol'
         ? 'Next: The Council'
         : stage === 'council'
@@ -88,24 +90,28 @@ export function PresenterBar() {
             <ArrowRight className="h-3 w-3" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => vegaSource.stepNextEvent()}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200 hover:border-sky-400/50"
-            title="Emit one single event without changing stage"
-          >
-            <PlusCircle className="h-3 w-3 text-sky-400" />
-            <span>+1 Event</span>
-          </button>
+          {dataMode === 'SIMULATED' && (
+            <>
+              <button
+                type="button"
+                onClick={() => vegaSource.stepNextEvent()}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200 hover:border-sky-400/50"
+                title="Emit one single event without changing stage"
+              >
+                <PlusCircle className="h-3 w-3 text-sky-400" />
+                <span>+1 Event</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => vegaSource.injectAnomaly()}
-            className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/15 px-2.5 py-1 font-medium text-red-200 hover:bg-red-500/25"
-          >
-            <Zap className="h-3 w-3" />
-            <span>Inject Anomaly</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => vegaSource.injectAnomaly()}
+                className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/15 px-2.5 py-1 font-medium text-red-200 hover:bg-red-500/25"
+              >
+                <Zap className="h-3 w-3" />
+                <span>Inject Anomaly</span>
+              </button>
+            </>
+          )}
 
           {dataMode === 'LIVE' && (
             <button
