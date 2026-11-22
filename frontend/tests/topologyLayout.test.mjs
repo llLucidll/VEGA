@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { packTopology, spaceTopology } from '../src/engine/topologyLayout.ts'
+import { packTopology, spacePentagramTopology } from '../src/engine/topologyLayout.ts'
 
 const hubId = 'vega-core'
 const makeBounds = (count) => new Map([
@@ -26,39 +26,45 @@ function assertSeparation(positions, bounds, margin = 0) {
   }
 }
 
-test('the hub is fixed and endpoints share a radius and evenly spaced angles', () => {
-  assert.equal(spaceTopology(new Map()).size, 0)
-  for (const count of [0, 1, 2, 3, 7, 11, 32, 128]) {
+test('all endpoints fit on pentagram strokes while the hub stays fixed', () => {
+  assert.equal(spacePentagramTopology(new Map()).positions.size, 0)
+  const tips = Array.from({ length: 5 }, (_, i) => {
+    const angle = Math.PI / 2 + i * 2 * Math.PI / 5
+    return { x: Math.cos(angle), y: Math.sin(angle) }
+  })
+  for (const count of [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 32, 128]) {
     const bounds = makeBounds(count)
-    const positions = spaceTopology(bounds)
+    const { positions, radius } = spacePentagramTopology(bounds)
     assert.equal(positions.size, count + 1)
     assert.deepEqual(positions.get(hubId), { x: 0, y: 0 })
     assertSeparation(positions, bounds, 20)
 
-    const endpoints = [...positions.values()].slice(1)
-    if (!endpoints.length) continue
-    const radius = Math.hypot(endpoints[0].x, endpoints[0].y)
-    const chord = 2 * radius * Math.sin(Math.PI / count)
-    for (const [i, point] of endpoints.entries()) {
-      assert.ok(Math.abs(Math.hypot(point.x, point.y) - radius) < 1e-8)
-      if (count > 1) {
-        const next = endpoints[(i + 1) % count]
-        assert.ok(Math.abs(Math.hypot(next.x - point.x, next.y - point.y) - chord) < 1e-8)
-      }
+    const endpoints = [...positions.values()].slice(1).map(({ x, y }) => ({ x: x / radius, y: y / radius }))
+    for (const point of endpoints) {
+      assert.ok(tips.some((a, i) => {
+        const b = tips[(i + 2) % 5]
+        const cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x)
+        return Math.abs(cross) < 1e-8 && Math.hypot(point.x, point.y) <= 1 + 1e-8
+      }))
+    }
+    if (count >= 5) {
+      for (const tip of tips) assert.ok(endpoints.some(({ x, y }) => Math.hypot(x - tip.x, y - tip.y) < 1e-8))
     }
   }
 })
 
-test('a growing roster expands and rebalances the ring', () => {
-  const before = spaceTopology(makeBounds(3))
-  const after = spaceTopology(makeBounds(12))
-  assert.notDeepEqual(before.get('vm-1'), after.get('vm-1'))
-  assert.ok(Math.abs(after.get('vm-0').y) > Math.abs(before.get('vm-0').y))
+test('a growing roster expands the star without depending on arrival order', () => {
+  const before = spacePentagramTopology(makeBounds(3))
+  const bounds = makeBounds(12)
+  const after = spacePentagramTopology(bounds)
+  assert.notDeepEqual(before.positions.get('vm-1'), after.positions.get('vm-1'))
+  assert.ok(after.radius > before.radius)
+  assert.deepEqual(after, spacePentagramTopology(new Map([...bounds].reverse())))
 })
 
 test('manual dragging keeps the hub and cards separated', () => {
   const bounds = makeBounds(11)
-  const positions = spaceTopology(bounds)
+  const { positions } = spacePentagramTopology(bounds)
   const dragged = packTopology(positions, bounds, { id: 'vm-1', point: positions.get('vm-2') })
   assert.deepEqual(dragged.get('vm-1'), positions.get('vm-2'))
   assert.notDeepEqual(dragged.get('vm-2'), positions.get('vm-2'))

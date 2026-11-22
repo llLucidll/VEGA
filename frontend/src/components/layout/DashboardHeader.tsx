@@ -1,6 +1,4 @@
-import { Pause, Play } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { togglePipelinePause } from '../../engine/sourceManager'
 import { useVegaEyeState } from '../../store/useVegaEyeState'
 import { useVegaStore } from '../../store/useVegaStore'
 import { PresenterBar } from './PresenterBar'
@@ -15,7 +13,6 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ onRecenter, onHeightChange }: DashboardHeaderProps) {
   const headerStack = useRef<HTMLDivElement>(null)
   const stage = useVegaStore((s) => s.stage)
-  const pipelinePaused = useVegaStore((s) => s.pipelinePaused)
   const wardenActive = useVegaEyeState() === 'warden'
   const showTicker = stage === 'panopticon' || stage === 'ghost_protocol' || stage === 'council'
 
@@ -53,36 +50,6 @@ export function DashboardHeader({ onRecenter, onHeightChange }: DashboardHeaderP
 
           <div className="justify-self-center md:col-start-2 md:row-start-1">
             <VegaBrand onRecenter={onRecenter} />
-          </div>
-
-          <div className="justify-self-end md:col-start-3 md:row-start-1">
-            <button
-              type="button"
-              onClick={() => void togglePipelinePause()}
-              aria-pressed={pipelinePaused}
-              title={
-                pipelinePaused
-                  ? 'Resume VEGA autonomous escalation pipeline'
-                  : 'Pause VEGA before escalating to Correlator, Council, or Warden'
-              }
-              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono-tabular text-[11px] tracking-wider uppercase backdrop-blur-md transition ${
-                pipelinePaused
-                  ? 'border-amber-400/70 bg-amber-500/20 text-amber-200 shadow-[0_0_18px_rgba(251,191,36,0.28)] hover:bg-amber-500/30'
-                  : 'border-slate-700/80 bg-slate-950/75 text-slate-300 hover:border-sky-400/50 hover:text-white'
-              }`}
-            >
-              {pipelinePaused ? (
-                <>
-                  <Play aria-hidden="true" className="size-3 fill-current" />
-                  <span>Paused · Resume</span>
-                </>
-              ) : (
-                <>
-                  <Pause aria-hidden="true" className="size-3" />
-                  <span>Pause</span>
-                </>
-              )}
-            </button>
           </div>
         </header>
       )}
