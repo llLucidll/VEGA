@@ -6,8 +6,9 @@ import vegaCorePurple from '../../assets/vega-core-council.png'
 import vegaCoreRed from '../../assets/vega-core-warden.png'
 import type { MonitoredNode } from '../../contracts/vega'
 import { drawTopologyDots, type TopologyHover } from '../../engine/drawTopologyDots'
+import { drawTopologyPentagram } from '../../engine/drawTopologyPentagram'
 import { particleBus } from '../../engine/particleBus'
-import { packTopology, spaceTopology, type NodeBounds, type Point } from '../../engine/topologyLayout'
+import { packTopology, spacePentagramTopology, type NodeBounds, type Point } from '../../engine/topologyLayout'
 import { useVegaEyeState } from '../../store/useVegaEyeState'
 import { useVegaStore } from '../../store/useVegaStore'
 import { VegaEye } from '../layout/VegaEye'
@@ -89,6 +90,8 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
     let target: { id: string; point: Point } | undefined
     let needsLayout = true
     let measuredNodes: MonitoredNode[] | undefined
+    let pentagramRadius = 0
+    let fitZoom = 1
     const bounds = new Map<string, NodeBounds>()
     const measureCards = new ResizeObserver(() => { needsLayout = true })
 
@@ -290,10 +293,21 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         }
       }
       if (needsLayout || target) {
+        if (needsLayout) {
+          const { positions, radius } = spacePentagramTopology(bounds)
+          pentagramRadius = radius
+          const frame = { x: radius, y: radius }
+          for (const [id, point] of positions) {
+            const card = bounds.get(id)!
+            frame.x = Math.max(frame.x, Math.abs(point.x) + card.width / 2)
+            frame.y = Math.max(frame.y, Math.abs(point.y) + card.height / 2)
+          }
+          // Fit the pentagram and badges, but keep dense layouts readable and pannable.
+          fitZoom = Math.max(0.55, Math.min(1, (size.width / 2 - 24) / frame.x, (size.height / 2 - 98) / frame.y))
+          if (!manualLayout.current) positionsRef.current = positions
+        }
         if (target) manualLayout.current = true
-        positionsRef.current = manualLayout.current
-          ? packTopology(positionsRef.current, bounds, target)
-          : spaceTopology(bounds)
+        if (manualLayout.current) positionsRef.current = packTopology(positionsRef.current, bounds, target)
         needsLayout = false
         target = undefined
       }
@@ -308,7 +322,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
       const focusPos = positions.get(focusId)
 
       // Smooth camera target: zoom into selected node and shift left to leave room for Ghost Protocol drawer
-      const targetZoom = isGhost ? 1.42 : state.zoomPercent / DEFAULT_ZOOM
+      const targetZoom = isGhost ? 1.42 : fitZoom * state.zoomPercent / DEFAULT_ZOOM
       const targetX = isGhost && focusPos ? focusPos.x + 130 : 0
       const targetY = isGhost && focusPos ? focusPos.y : 0
 
@@ -350,6 +364,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
       hover.motion += (motion - hover.motion) * hoverEase
       if (!reducedMotion.matches) orbitSeconds.current += Math.max(0, dt)
       drawTopologyDots(ctx, size.width, size.height, origin, camera.zoom, hover, orbitSeconds.current)
+      if (pentagramRadius > 0) drawTopologyPentagram(ctx, origin, pentagramRadius * camera.zoom)
 
       // Draw edges
       for (const edge of state.edges) {

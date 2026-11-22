@@ -12,38 +12,61 @@ type PlacedNode = Point & NodeBounds
 
 const NODE_GAP = 8
 const HUB_ID = 'vega-core'
-const MIN_ORBIT_RADIUS = 210
-const ORBIT_GAP = 20
+const MIN_PENTAGRAM_RADIUS = 210
+const LAYOUT_GAP = 20
+const PENTAGRAM_TIPS = 5
+const PENTAGRAM_INNER_RATIO = (3 - Math.sqrt(5)) / 2
 
-/** Place every measured endpoint on one ring, with equal angles and a fixed hub. */
-export function spaceTopology(bounds: ReadonlyMap<string, NodeBounds>): Map<string, Point> {
+// Downward tip first, then clockwise. The inner vertices are the intersections
+// of the pentagram's chords, so the slots sit on its strokes, not on fake links.
+export const PENTAGRAM_OUTLINE: readonly Point[] = Array.from({ length: 2 * PENTAGRAM_TIPS }, (_, i) => {
+  const angle = Math.PI / 2 + i * Math.PI / PENTAGRAM_TIPS
+  const radius = i % 2 ? PENTAGRAM_INNER_RATIO : 1
+  return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) }
+})
+
+/** Fill the star's tips, then subdivide its perimeter as the roster grows. */
+export function spacePentagramTopology(bounds: ReadonlyMap<string, NodeBounds>) {
+  const endpoints = [...bounds.keys()].filter((id) => id !== HUB_ID).sort()
+  const smallRosters: readonly (readonly number[])[] = [[], [0], [2, 8], [0, 4, 6], [2, 4, 6, 8]]
+  const slots = smallRosters[endpoints.length]?.map((i) => PENTAGRAM_OUTLINE[i]) ??
+    Array.from({ length: PENTAGRAM_TIPS }, (_, tip) => {
+      // Each section gets either floor(n/5) or ceil(n/5) cards, including its tip.
+      const count = Math.floor((tip + 1) * endpoints.length / PENTAGRAM_TIPS) -
+        Math.floor(tip * endpoints.length / PENTAGRAM_TIPS)
+      return Array.from({ length: count }, (_, i) => {
+        const offset = 2 * i / count
+        const start = 2 * tip + Math.floor(offset)
+        const fraction = offset % 1
+        const a = PENTAGRAM_OUTLINE[start]
+        const b = PENTAGRAM_OUTLINE[(start + 1) % PENTAGRAM_OUTLINE.length]
+        return { x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction }
+      })
+    }).flat()
+  return fitSlots(bounds, endpoints.map((id, i) => ({ id, ...slots[i] })))
+}
+
+function fitSlots(bounds: ReadonlyMap<string, NodeBounds>, slots: (Point & { id: string })[]) {
   const hub = bounds.get(HUB_ID)
   const positions = new Map<string, Point>(hub ? [[HUB_ID, { x: 0, y: 0 }]] : [])
-  const endpoints = [...bounds].filter(([id]) => id !== HUB_ID)
-  const step = (2 * Math.PI) / endpoints.length
-  const startAngle = endpoints.length === 2 ? 0 : -Math.PI / 2
-  const slots = endpoints.map(([id, box], i) => {
-    const angle = startAngle + i * step
-    return { id, box, x: Math.cos(angle), y: Math.sin(angle) }
-  })
-
-  let radius = MIN_ORBIT_RADIUS
+  const measured = slots.map((slot) => ({ ...slot, box: bounds.get(slot.id)! }))
+  let radius = MIN_PENTAGRAM_RADIUS
   const includeClearance = (a: Point & { box: NodeBounds }, b: Point & { box: NodeBounds }) => {
-    const gapX = (a.box.width + b.box.width) / 2 + ORBIT_GAP
-    const gapY = (a.box.height + b.box.height) / 2 + ORBIT_GAP
-    // The cards only need separation along one axis. With unit-circle slots,
-    // each center difference scales directly with the shared ring radius.
+    const gapX = (a.box.width + b.box.width) / 2 + LAYOUT_GAP
+    const gapY = (a.box.height + b.box.height) / 2 + LAYOUT_GAP
+    // The cards only need separation along one axis. The slot coordinates
+    // scale uniformly so clearance does not distort the underlying shape.
     const minimum = Math.min(gapX / Math.abs(a.x - b.x), gapY / Math.abs(a.y - b.y))
     radius = Math.max(radius, Math.ceil(minimum))
   }
 
-  for (const [i, slot] of slots.entries()) {
+  for (const [i, slot] of measured.entries()) {
     if (hub) includeClearance(slot, { x: 0, y: 0, box: hub })
-    for (let j = 0; j < i; j++) includeClearance(slot, slots[j])
+    for (let j = 0; j < i; j++) includeClearance(slot, measured[j])
   }
 
   for (const { id, x, y } of slots) positions.set(id, { x: radius * x, y: radius * y })
-  return positions
+  return { positions, radius }
 }
 
 function nearestFreePosition(desired: Point, bounds: NodeBounds, placed: PlacedNode[]): Point {
