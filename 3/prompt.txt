@@ -1,0 +1,48 @@
+we are finally getting close to wrapping up and preparing to demo VEGA:
+
+can you help me fill this out:
+/tmp/pi-clipboard-850a4410-3c56-4bdd-996b-a9b3038b5082.png
+
+lets work through each section one by one
+
+---
+
+the binance hack from recent (6.3 billion stolen)
+
+---
+
+/tmp/pi-clipboard-f8d0cc4f-2c9f-46be-9581-e75cb74f4bf4.png
+
+alright let's do what it does now, the meat and potatoes
+
+---
+
+/tmp/pi-clipboard-a82be471-8e39-4b91-b580-14b72fa54f4c.png
+
+ok next is how we built it
+
+---
+
+/tmp/pi-clipboard-cc246a90-3e91-4cff-9f30-7716fa0c854a.png
+
+lets do challenges we ran into
+
+---
+
+talk about the chunking we ha dto do for agent swarms to avoid getting rate limited by gemini>
+
+Talk about how we had to corroborate signals across disconnected isolated linux vm's and also talk about how we wanted to strike a balance between autonomous and decisive prevention with benefit of the doubt for employee actions
+
+---
+
+now for accomplishments we are proud of
+
+---
+
+1 is not a flex, it's an expectation. 3 can be phrased as traceability.
+
+Lets make 1 more like we had an impossible idea and we made it reality exactly we wanted without any corner cutting
+
+---
+
+and then gen the what we learned and what's next for VEGA part tgr

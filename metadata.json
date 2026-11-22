@@ -3,7 +3,7 @@
   "checkpoint_id": "01M81GH5C6884HA295N0ASYVH2",
   "strategy": "manual-commit",
   "branch": "vm-c-false-positive-and-ui-polish",
-  "checkpoints_count": 26,
+  "checkpoints_count": 35,
   "files_touched": [
     "backend/oracle/context.py",
     "backend/oracle/sentinel_bridge.py",
@@ -48,24 +48,31 @@
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
       "prompt": "/2/prompt.txt"
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
+      "prompt": "/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 448417,
+    "input_tokens": 570247,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 24796579,
-    "output_tokens": 88441,
-    "api_call_count": 136
+    "cache_read_tokens": 25147299,
+    "output_tokens": 92475,
+    "api_call_count": 158
   },
   "redaction": {
-    "replacements": 114,
+    "replacements": 119,
     "layers": {
       "betterleaks": 9,
       "connection_string": 0,
       "credential_key": 0,
-      "credential_value": 52,
+      "credential_value": 56,
       "credentialed_uri": 0,
-      "entropy": 91,
+      "entropy": 92,
       "key_context": 0,
       "provider_token": 0,
       "shell_stdin": 0
