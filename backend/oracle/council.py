@@ -22,7 +22,7 @@ from typing import Awaitable, Callable, TypeVar
 from pydantic import BaseModel
 
 from . import prompts
-from .context import HISTORICAL_CONTEXT, POLICIES, PROTECTED_HOSTS
+from .context import HISTORICAL_CONTEXT, ORG_FACTS, POLICIES, PROTECTED_HOSTS
 from .schemas import (
     CompetingExplanation,
     CouncilOpinions,
@@ -108,27 +108,79 @@ def mock_caller(path: Path | None = None) -> MemberCaller:
 
 # ---------- Arbiter ----------
 
-def arbitrate(v: VmVerdict) -> str:
+def arbitrate(v: VmVerdict) -> tuple[str, str, str]:
+    """Return (verdict, rule, plain-English reason). Rules are checked in order; anything unclear fails closed."""
     if v.failures or not (v.prosecutor and v.defender and v.steward):
-        return "ESCALATE"
-    if not v.steward.allowed or v.source_id in PROTECTED_HOSTS:
-        return "ESCALATE"
+        detail = "; ".join(v.failures) or "a member returned no opinion"
+        return "ESCALATE", "MEMBER_FAILED", f"Council incomplete ({detail}); human review."
     p, d = v.prosecutor.score, v.defender.score
-    if p >= CONTAIN_PROSECUTOR and d < CONTAIN_DEFENDER_MAX:
-        return "CONTAIN"
+    if v.source_id in PROTECTED_HOSTS:
+        return "ESCALATE", "PROTECTED_HOST", f"{v.source_id} is a protected host; containment needs human approval."
+    # Clearing a host contains nothing, so the Steward's containment ruling doesn't apply.
     if d >= CLEAR_DEFENDER and p < CLEAR_PROSECUTOR_MAX:
-        return "NO_ACTION"
-    return "ESCALATE"
+        return (
+            "NO_ACTION",
+            "CLEARED_INNOCENT_EXPLANATION",
+            f"Defender {d:.2f} >= {CLEAR_DEFENDER:.2f} ('{v.defender.hypothesis}') and Prosecutor {p:.2f} < "
+            f"{CLEAR_PROSECUTOR_MAX:.2f}.",
+        )
+    if not v.steward.allowed:
+        return "ESCALATE", "STEWARD_DENIED", "Steward found no policy allowing containment of this host; human review."
+    if p >= CONTAIN_PROSECUTOR and not (v.prosecutor.cited_finding_ids or v.prosecutor.cited_event_ids):
+        return (
+            "ESCALATE",
+            "UNSUPPORTED_ACCUSATION",
+            f"Prosecutor scored {p:.2f} but cited no valid evidence from this host; human review.",
+        )
+    if p >= CONTAIN_PROSECUTOR and d < CONTAIN_DEFENDER_MAX:
+        return (
+            "CONTAIN",
+            "CONTAIN_STRONG_EVIDENCE",
+            f"Prosecutor {p:.2f} >= {CONTAIN_PROSECUTOR:.2f} with cited evidence, Defender {d:.2f} < "
+            f"{CONTAIN_DEFENDER_MAX:.2f}, and policy allows containment.",
+        )
+    return (
+        "ESCALATE",
+        "INCONCLUSIVE",
+        f"Scores meet no automatic threshold (Prosecutor {p:.2f}, Defender {d:.2f}); human review.",
+    )
 
 
 # ---------- Council ----------
 
 def _clean(member: str, opinion: BaseModel) -> BaseModel:
-    if member == "steward":  # drop hallucinated policy IDs
-        opinion.policy_ids = [pid for pid in opinion.policy_ids if pid in POLICIES]
     if member in ("prosecutor", "defender"):
         opinion.score = min(1.0, max(0.0, opinion.score))
     return opinion
+
+
+def _keep_known(cited: list[str], known: set[str], label: str, errors: list[str]) -> list[str]:
+    """Drop IDs that don't exist for this host (deduplicated, order kept) and record each one dropped."""
+    kept: list[str] = []
+    for item in cited:
+        if item in known:
+            if item not in kept:
+                kept.append(item)
+        else:
+            errors.append(f"{label}: unknown ID {item!r} removed")
+    return kept
+
+
+def _check_citations(v: VmVerdict, findings: list[ScoutFinding], events: list[StoredEvent]) -> None:
+    """Only evidence that exists for THIS host may support a verdict."""
+    finding_ids = {f.finding_id for f in findings}
+    event_ids = {e.event_id for e in events} | {eid for f in findings for eid in f.evidence_event_ids}
+    errors: list[str] = []
+    if v.prosecutor:
+        v.prosecutor.cited_finding_ids = _keep_known(v.prosecutor.cited_finding_ids, finding_ids, "prosecutor", errors)
+        v.prosecutor.cited_event_ids = _keep_known(v.prosecutor.cited_event_ids, event_ids, "prosecutor", errors)
+    if v.defender:
+        v.defender.cited_fact_ids = _keep_known(v.defender.cited_fact_ids, set(ORG_FACTS), "defender", errors)
+        if v.defender.score >= CLEAR_DEFENDER and not v.defender.cited_fact_ids:
+            errors.append("defender: innocent explanation not grounded in any ORG fact")
+    if v.steward:
+        v.steward.policy_ids = _keep_known(v.steward.policy_ids, set(POLICIES), "steward", errors)
+    v.citation_errors = errors
 
 
 async def _run_combined(
@@ -177,7 +229,8 @@ async def run_vm_council(
 ) -> VmVerdict:
     if not findings:
         v = VmVerdict(source_id=source_id, verdict="ESCALATE", prosecutor=None, defender=None,
-                      steward=None, failures=["no findings for this source"])
+                      steward=None, failures=["no findings for this source"], rule="NO_FINDINGS",
+                      rule_text="Sentinel named this host but sent no findings for it; human review.")
         return v
     user = prompts.member_input(source_id, findings, events)
     if COUNCIL_MODE == "separate":
@@ -193,7 +246,8 @@ async def run_vm_council(
         steward=opinions["steward"],
         failures=[err for _, _, err in results if err],
     )
-    v.verdict = arbitrate(v)
+    _check_citations(v, findings, events)
+    v.verdict, v.rule, v.rule_text = arbitrate(v)
     return v
 
 
@@ -238,7 +292,7 @@ def build_assessment(request: OracleRequest, verdicts: list[VmVerdict], model_la
         elif v.verdict == "NO_ACTION" and v.defender:
             lines.append(f"{v.source_id}: {v.defender.reason}")
         else:
-            lines.append(f"{v.source_id}: escalated ({'; '.join(v.failures) or 'council did not reach a clear verdict'}).")
+            lines.append(f"{v.source_id}: escalated ({v.rule_text or '; '.join(v.failures) or 'no clear verdict'})")
     head = (
         f"Council contains {', '.join(by['CONTAIN']) or 'no hosts'}"
         + (f"; takes no action on {', '.join(by['NO_ACTION'])}" if by["NO_ACTION"] else "")
