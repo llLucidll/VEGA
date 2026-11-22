@@ -1,0 +1,32 @@
+can you give me the commands for running the full app again?
+
+---
+
+wai ti dont need 3 and 4 no?
+
+---
+
+curl: (7) Failed to connect to 10.97.0.1 port 8443 after 0 ms: Could not connect to server
+Upload failed (curl exit 7).
+
+why did this happen on vm-a
+
+---
+
+okay, ive tested the full e2e flow. Imo we will create one more script which doesnt trigger jev and is like two streams that seem suspicious but upon analyzing in conjuction w each other it is fine (council detects this)
+
+So we want this false positive case. Apart from that for the 3 min demo + 2 min qna anything else we havent implemented yet for VEGA
+
+---
+
+/tmp/pi-clipboard-5604ad3c-228c-4bde-81b2-560717f10475.png
+
+lets get this trail merged in before we proceed
+
+---
+
+what is the merge conflict
+
+---
+
+yes go ahead
