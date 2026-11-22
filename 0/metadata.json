@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M81XS4HY37GR7R6KVMZ6XTBH",
+  "session_id": "01a1fe05-6d69-7598-b3e0-2c8ac8b72479",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-22T15:25:18.627690105Z",
+  "branch": "implemented-rune-on-panopticon",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "backend/vega/council/warden.py"
+  ],
+  "agent": "Pi",
+  "model": "gemini-4-hydrogen-sonar",
+  "turn_id": "07861607c817",
+  "checkpoint_transcript_start": 1608,
+  "transcript_lines_at_start": 1608,
+  "compact_transcript_start": 761,
+  "token_usage": {
+    "input_tokens": 6827,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 730572,
+    "output_tokens": 2834,
+    "api_call_count": 3
+  },
+  "session_token_usage": {
+    "input_tokens": 6161063,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 117226665,
+    "output_tokens": 565273,
+    "api_call_count": 653
+  },
+  "redaction": {
+    "replacements": 96,
+    "layers": {
+      "betterleaks": 8,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 40,
+      "credentialed_uri": 0,
+      "entropy": 86,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 33
+  }
+}
