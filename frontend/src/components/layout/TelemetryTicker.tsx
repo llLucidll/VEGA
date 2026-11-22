@@ -81,7 +81,7 @@ export function TelemetryTicker() {
     <aside className="vega-ticker pointer-events-auto flex" aria-labelledby="telemetry-heading">
       <h2
         id="telemetry-heading"
-        className="flex shrink-0 items-center gap-2 border-r border-slate-400/15 px-3 text-xs font-semibold text-slate-200 sm:px-6"
+        className="flex shrink-0 items-center gap-2 border-r border-slate-400/15 px-3 font-display text-[11px] tracking-[0.04em] text-slate-200 lowercase sm:px-6"
       >
         <Activity aria-hidden="true" className="size-3.5 text-sky-300" />
         Telemetry
