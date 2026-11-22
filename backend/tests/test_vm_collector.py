@@ -155,3 +155,65 @@ def test_demo_exfil_sink_endpoint_and_url_detection(tmp_path):
         res = client.post("/api/demo/exfil-sink", content=b"0123456789")
         assert res.status_code == 200
         assert res.json() == {"status": "sink_received", "bytes": 10}
+
+
+def test_vm_collector_tails_service_log_with_backup_metadata(tmp_path):
+    import json
+
+    tmp_dir = tmp_path / "tmp"
+    tmp_dir.mkdir()
+    service_log = tmp_path / "vega-backup.jsonl"
+    service_log.write_text("", encoding="utf-8")
+
+    watcher = VMTelemetryWatcher(
+        ingest_url="http://10.97.0.1:8001",
+        source_id="vm-c",
+        run_id="vm-test",
+        secrets_dir=tmp_path / "missing-secrets",
+        tmp_dir=tmp_dir,
+        history_file=tmp_path / ".bash_history",
+        service_log=service_log,
+    )
+
+    archive = tmp_dir / ".vega-backup-0200.tgz"
+    archive.write_bytes(b"backup-bytes" * 10)
+    with open(service_log, "a", encoding="utf-8") as f:
+        f.write(
+            json.dumps(
+                {
+                    "cmd": f"tar -czf {archive} -C /var/tmp vega-artifacts",
+                    "user": "svc_backup",
+                    "unit": "vega-backup.service",
+                    "source_dir": "/var/tmp/vega-artifacts",
+                    "archive_path": str(archive),
+                }
+            )
+            + "\n"
+        )
+        f.write(
+            json.dumps(
+                {
+                    "cmd": f"curl --disable --noproxy '*' -fsS --data-binary @{archive} http://backup.corp.internal:8443/upload",
+                    "user": "svc_backup",
+                    "unit": "vega-backup.service",
+                    "dst_ip": "10.24.8.15",
+                }
+            )
+            + "\n"
+        )
+
+    emitted = watcher.poll_once()
+    proc_events = [p for ch, p in emitted if ch == "process"]
+    net_events = [p for ch, p in emitted if ch == "network"]
+    file_events = [p for ch, p in emitted if ch == "file"]
+
+    assert len(proc_events) == 2
+    assert all(p["user"] == "svc_backup" and p["unit"] == "vega-backup.service" for p in proc_events)
+    assert len(net_events) == 1
+    assert net_events[0]["dst"] == "backup.corp.internal:8443"
+    assert net_events[0]["dst_ip"] == "10.24.8.15"
+    assert net_events[0]["user"] == "svc_backup"
+    assert net_events[0]["unit"] == "vega-backup.service"
+    assert len(file_events) == 1
+    assert file_events[0]["user"] == "svc_backup"
+    assert file_events[0]["unit"] == "vega-backup.service"

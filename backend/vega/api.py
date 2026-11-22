@@ -6,10 +6,11 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi import Body, FastAPI, HTTPException, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 
 from .config import settings
 from .council import (
@@ -118,13 +119,42 @@ async def _handle_oracle_assessment(assessment, signal, findings, events) -> Non
         await asyncio.sleep(settings.stage_delay_seconds)
         if runtime.council_signal != signal:
             return
+    await runtime.wait_if_paused()
+    if runtime.council_signal != signal:
+        return
     decision = await warden_service.evaluate(
         assessment,
         signal=signal,
         findings=findings,
         events=events,
     )
-    if decision is None or runtime.council_signal != signal:
+    if runtime.council_signal != signal:
+        return
+    if decision is None:
+        cleared_ids = {
+            v.source_id for v in assessment.verdicts if v.verdict == "NO_ACTION"
+        }
+        if not cleared_ids and not assessment.verdicts:
+            cleared_ids = set(signal.source_ids)
+        if cleared_ids:
+            for node in runtime.nodes:
+                if node.source_id in cleared_ids and node.status in {"elevated", "compromised"}:
+                    node.status = "healthy"
+            status_by_id = {n.source_id: n.status for n in runtime.nodes}
+            for edge in runtime.edges:
+                if edge.from_node in cleared_ids or edge.to_node in cleared_ids:
+                    if (
+                        status_by_id.get(edge.from_node) not in {"elevated", "compromised"}
+                        and status_by_id.get(edge.to_node) not in {"elevated", "compromised"}
+                    ):
+                        edge.anomalous = False
+            if runtime.warden_decision is None and not any(
+                n.status in {"elevated", "compromised"}
+                for n in runtime.nodes
+                if n.source_id != "vega-core"
+            ):
+                runtime.threat_mode = "WATCH"
+            await runtime.publish("snapshot", runtime.snapshot())
         return
     runtime.warden_decision = decision
     if not decision.requires_human_approval:
@@ -343,8 +373,25 @@ async def demo_exfil_sink(request: Request) -> dict[str, object]:
     return {"status": "sink_received", "bytes": len(body)}
 
 
+class PauseRequest(BaseModel):
+    paused: bool | None = None
+
+
+@app.post("/api/demo/pause")
+async def set_demo_pause(req: PauseRequest | None = Body(default=None)) -> dict[str, bool]:
+    next_paused = (
+        (not runtime.pipeline_paused)
+        if (req is None or req.paused is None)
+        else req.paused
+    )
+    runtime.set_pipeline_paused(next_paused)
+    await runtime.publish("snapshot", runtime.snapshot())
+    return {"pipeline_paused": runtime.pipeline_paused}
+
+
 @app.post("/api/demo/reset")
 async def reset_demo() -> dict[str, str]:
+    runtime.set_pipeline_paused(False)
     async with scheduler.lifecycle_lock:
         hosts = sorted(
             {n.source_id for n in runtime.nodes if n.source_id != "vega-core"}

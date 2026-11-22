@@ -215,6 +215,7 @@ class StateSnapshot(BaseModel):
     threat_mode: ThreatMode
     active_window_id: str
     ttl_seconds_remaining: int
+    pipeline_paused: bool = False
     nodes: list[MonitoredNode]
     edges: list[NetworkEdge]
     windows: list[Window]

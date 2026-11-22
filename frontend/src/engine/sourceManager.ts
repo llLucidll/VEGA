@@ -24,6 +24,17 @@ export async function flushLiveWindow() {
   }
 }
 
+export async function togglePipelinePause() {
+  const state = useVegaStore.getState()
+  const nextPaused = !state.pipelinePaused
+  if (state.dataMode === 'LIVE') {
+    await liveSource.setPipelinePaused(nextPaused)
+    return
+  }
+  state.setPipelinePaused(nextPaused)
+  mockSource.setPlaying(!nextPaused)
+}
+
 export const vegaSource: VegaDataSource = {
   get mode() {
     return activeSource().mode

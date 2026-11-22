@@ -127,6 +127,7 @@ class VMTelemetryWatcher:
         secrets_dir: Path,
         tmp_dir: Path,
         history_file: Path,
+        service_log: Path | None = None,
     ) -> None:
         self.endpoint = f"{ingest_url.rstrip('/')}/events"
         parsed = urllib.parse.urlparse(ingest_url)
@@ -138,10 +139,15 @@ class VMTelemetryWatcher:
         self.secrets_dir = secrets_dir
         self.tmp_dir = tmp_dir
         self.history_file = history_file
+        self.service_log = service_log
 
         self._secrets_atime: dict[str, float] = self._snapshot_dir_atime(secrets_dir)
         self._tmp_archives: dict[str, int] = self._snapshot_tmp_archives(tmp_dir)
-        self._history_offset: int = self._initial_history_offset(history_file)
+        self._history_offset: int = self._initial_file_offset(history_file)
+        self._service_log_offset: int = (
+            self._initial_file_offset(service_log) if service_log is not None else 0
+        )
+        self._service_archive_meta: dict[str, dict[str, object]] = {}
         self._seen_tcp: set[tuple[str, int]] = read_established_tcp()
         self._last_secrets_alert = 0.0
 
@@ -176,9 +182,9 @@ class VMTelemetryWatcher:
         return snap
 
     @staticmethod
-    def _initial_history_offset(history_file: Path) -> int:
+    def _initial_file_offset(path: Path) -> int:
         try:
-            return history_file.stat().st_size if history_file.exists() else 0
+            return path.stat().st_size if path.exists() else 0
         except OSError:
             return 0
 
@@ -209,23 +215,46 @@ class VMTelemetryWatcher:
                 )
             )
 
+        # 1b. Service execution log (e.g. systemd backup jobs)
+        for record in self._read_new_service_records():
+            cmd = str(record.get("cmd") or "").strip()
+            if not cmd:
+                continue
+            meta: dict[str, object] = {}
+            for key in ("user", "unit", "source_dir", "dst_ip"):
+                if record.get(key):
+                    meta[key] = record[key]
+            archive_path = record.get("archive_path")
+            if isinstance(archive_path, str) and archive_path:
+                self._service_archive_meta[archive_path] = dict(meta)
+            proc_payload: dict[str, object] = {
+                "host_role": "Linux VM Endpoint",
+                "cmd": cmd,
+                "parent": str(record.get("parent") or "systemd"),
+                "source": "systemd_service",
+            }
+            proc_payload.update(meta)
+            emitted.append(("process", proc_payload))
+            net_payload = self._detect_upload_command(cmd)
+            if net_payload is not None:
+                net_payload.update(meta)
+                emitted.append(("network", net_payload))
+
         # 2. File channel: hidden archive staging in /tmp
         current_archives = self._snapshot_tmp_archives(self.tmp_dir)
         for path, size in current_archives.items():
             prev_size = self._tmp_archives.get(path)
             if prev_size is None or size > prev_size:
-                emitted.append(
-                    (
-                        "file",
-                        {
-                            "host_role": "Linux VM Endpoint",
-                            "op": "create" if prev_size is None else "write",
-                            "path": path,
-                            "bytes": size,
-                            "hidden_dotfile": True,
-                        },
-                    )
-                )
+                file_payload: dict[str, object] = {
+                    "host_role": "Linux VM Endpoint",
+                    "op": "create" if prev_size is None else "write",
+                    "path": path,
+                    "bytes": size,
+                    "hidden_dotfile": True,
+                }
+                if path in self._service_archive_meta:
+                    file_payload.update(self._service_archive_meta[path])
+                emitted.append(("file", file_payload))
         self._tmp_archives = current_archives
 
         # 3. Process + Network channels: tail ~/.bash_history
@@ -282,6 +311,34 @@ class VMTelemetryWatcher:
                 chunk = f.read()
                 self._history_offset = f.tell()
             return [line.strip() for line in chunk.splitlines() if line.strip() and not line.startswith("#")]
+        except OSError:
+            return []
+
+    def _read_new_service_records(self) -> list[dict[str, object]]:
+        if self.service_log is None or not self.service_log.exists():
+            return []
+        try:
+            size = self.service_log.stat().st_size
+            if size < self._service_log_offset:
+                self._service_log_offset = 0
+            if size == self._service_log_offset:
+                return []
+            with open(self.service_log, "r", encoding="utf-8", errors="replace") as f:
+                f.seek(self._service_log_offset)
+                chunk = f.read()
+                self._service_log_offset = f.tell()
+            records: list[dict[str, object]] = []
+            for line in chunk.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    parsed = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict):
+                    records.append(parsed)
+            return records
         except OSError:
             return []
 
@@ -367,6 +424,7 @@ def main() -> None:
     parser.add_argument("--secrets-dir", default="/srv/secrets/prod-keys")
     parser.add_argument("--tmp-dir", default="/tmp")
     parser.add_argument("--history-file", default=str(Path.home() / ".bash_history"))
+    parser.add_argument("--service-log", default="/var/log/vega-backup.jsonl")
     parser.add_argument("--poll-interval", type=float, default=0.35)
     parser.add_argument("--heartbeat-interval", type=float, default=4.0)
     args = parser.parse_args()
@@ -378,6 +436,7 @@ def main() -> None:
         secrets_dir=Path(args.secrets_dir),
         tmp_dir=Path(args.tmp_dir),
         history_file=Path(args.history_file),
+        service_log=Path(args.service_log) if args.service_log else None,
     )
     watcher.run_forever(
         poll_interval=args.poll_interval,

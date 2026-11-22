@@ -11,9 +11,17 @@ export function CouncilView({ headerHeight }: { headerHeight: number }) {
   const stage = useVegaStore((s) => s.stage)
   const dataMode = useVegaStore((s) => s.dataMode)
   const councilSignal = useVegaStore((s) => s.councilSignal)
+  const oracleAssessment = useVegaStore((s) => s.oracleAssessment)
+  const wardenDecision = useVegaStore((s) => s.wardenDecision)
   const selectEvent = useVegaStore((s) => s.selectEvent)
   const setChronosExpanded = useVegaStore((s) => s.setChronosExpanded)
   const setStage = useVegaStore((s) => s.setStage)
+
+  const clearedByOracle =
+    Boolean(oracleAssessment) &&
+    wardenDecision === null &&
+    (oracleAssessment?.verdicts?.length ?? 0) > 0 &&
+    oracleAssessment!.verdicts!.every((v) => v.verdict === 'NO_ACTION')
 
   return (
     <AnimatePresence>
@@ -61,14 +69,25 @@ export function CouncilView({ headerHeight }: { headerHeight: number }) {
                 <span>Topology</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => vegaSource.jumpToStage('blackout')}
-                className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-medium tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
-              >
-                <span>{dataMode === 'LIVE' ? 'View Warden Gate' : 'Escalate to Warden Gate'}</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
+              {clearedByOracle ? (
+                <button
+                  type="button"
+                  onClick={() => setStage('panopticon')}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-500/15 px-4 py-2 text-xs font-medium tracking-wider text-emerald-200 uppercase transition hover:bg-emerald-500/25"
+                >
+                  <span>Cleared — Return to Panopticon</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => vegaSource.jumpToStage('blackout')}
+                  className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-medium tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
+                >
+                  <span>{dataMode === 'LIVE' ? 'View Warden Gate' : 'Escalate to Warden Gate'}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 

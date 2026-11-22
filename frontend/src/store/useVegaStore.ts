@@ -29,6 +29,7 @@ export interface BackendStateSnapshot {
   threat_mode: ThreatMode
   active_window_id: string
   ttl_seconds_remaining: number
+  pipeline_paused?: boolean
   nodes: MonitoredNode[]
   edges: NetworkEdge[]
   windows: Window[]
@@ -52,6 +53,7 @@ interface VegaState {
   stage: VegaStage
   threatMode: ThreatMode
   isPlaying: boolean
+  pipelinePaused: boolean
   playbackSpeed: number
   elapsedMs: number
   ttlSecondsRemaining: number
@@ -74,6 +76,7 @@ interface VegaState {
   observerOpen: boolean
   observerMessages: ObserverMessage[]
   presenterOpen: boolean
+  zoomPercent: number
 
   // Actions
   setDataMode: (mode: 'SIMULATED' | 'LIVE') => void
@@ -84,6 +87,7 @@ interface VegaState {
   setStage: (stage: VegaStage) => void
   setThreatMode: (mode: ThreatMode) => void
   setPlaying: (playing: boolean) => void
+  setPipelinePaused: (paused: boolean) => void
   setPlaybackSpeed: (speed: number) => void
   setElapsedMs: (ms: number) => void
   tickTtl: (deltaSec: number) => void
@@ -106,6 +110,7 @@ interface VegaState {
   setObserverOpen: (open: boolean) => void
   addObserverMessage: (msg: ObserverMessage) => void
   setPresenterOpen: (open: boolean) => void
+  setZoomPercent: (percent: number) => void
   appendWardenAudit: (entry: WardenAuditEntry) => void
   updateWardenExecution: (
     patch: Partial<Pick<WardenDecision, 'approval_status' | 'approval_ref' | 'execution_status'>>,
@@ -121,6 +126,7 @@ export const useVegaStore = create<VegaState>((set) => ({
   stage: 'panopticon',
   threatMode: 'WATCH',
   isPlaying: true,
+  pipelinePaused: false,
   playbackSpeed: 1,
   elapsedMs: 0,
   ttlSecondsRemaining: initialScenario.retention_seconds,
@@ -143,6 +149,7 @@ export const useVegaStore = create<VegaState>((set) => ({
   observerOpen: false,
   observerMessages: [],
   presenterOpen: false,
+  zoomPercent: 100,
 
   setDataMode: (dataMode) => set({ dataMode }),
   setLiveStatus: (liveStatus) => set({ liveStatus }),
@@ -151,6 +158,7 @@ export const useVegaStore = create<VegaState>((set) => ({
     set({
       stage: 'panopticon',
       threatMode: 'WATCH',
+      pipelinePaused: false,
       ttlSecondsRemaining: initialScenario.retention_seconds,
       nodes: [
         {
@@ -196,6 +204,7 @@ export const useVegaStore = create<VegaState>((set) => ({
         threatMode: snapshot.threat_mode,
         activeWindowId: snapshot.active_window_id,
         ttlSecondsRemaining: snapshot.ttl_seconds_remaining,
+        pipelinePaused: Boolean(snapshot.pipeline_paused),
         nodes: snapshot.nodes,
         edges: snapshot.edges,
         windows: snapshot.windows,
@@ -218,6 +227,7 @@ export const useVegaStore = create<VegaState>((set) => ({
       stage: 'panopticon',
       threatMode: 'WATCH',
       isPlaying: true,
+      pipelinePaused: false,
       elapsedMs: 0,
       ttlSecondsRemaining: sc.retention_seconds,
       nodes: sc.nodes.map((n) => ({ ...n })),
@@ -257,6 +267,7 @@ export const useVegaStore = create<VegaState>((set) => ({
 
   setThreatMode: (threatMode) => set({ threatMode }),
   setPlaying: (isPlaying) => set({ isPlaying }),
+  setPipelinePaused: (pipelinePaused) => set({ pipelinePaused }),
   setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   setElapsedMs: (elapsedMs) => set({ elapsedMs }),
   tickTtl: (deltaSec) =>
@@ -374,6 +385,8 @@ export const useVegaStore = create<VegaState>((set) => ({
   addObserverMessage: (msg) =>
     set((state) => ({ observerMessages: [...state.observerMessages, msg] })),
   setPresenterOpen: (presenterOpen) => set({ presenterOpen }),
+  setZoomPercent: (percent) =>
+    set({ zoomPercent: Math.max(50, Math.min(100, Math.round(percent))) }),
 
   appendWardenAudit: (entry) =>
     set((state) => {

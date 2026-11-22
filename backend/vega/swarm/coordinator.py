@@ -85,6 +85,8 @@ class SwarmWindowCoordinator:
         cache: _WindowAnalysisCache | None = None,
     ) -> WindowRunResult:
         # Early analysis reads a snapshot of a still-collecting window.
+        if self.runtime is not None:
+            await self.runtime.wait_if_paused()
         if early_sources is None:
             await self._update_window_status(window, "scouting")
 
@@ -129,6 +131,8 @@ class SwarmWindowCoordinator:
             and self.runtime.council_signal is None
         ):
             await asyncio.sleep(self.stage_delay_seconds)
+        if self.runtime is not None:
+            await self.runtime.wait_if_paused()
         if early_sources is None:
             await self._update_window_status(window, "correlating")
         # Correlation sees only the findings, not raw events. Don't reuse incomplete passes.

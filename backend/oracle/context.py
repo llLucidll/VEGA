@@ -9,9 +9,10 @@ from .schemas import CitedPolicy
 # Org-wide facts. Members cite these by ID so every innocent explanation is traceable.
 ORG_FACTS: dict[str, str] = {
     "ORG-BACKUP-01": (
-        "Nightly backups run from every managed VM at 02:00 UTC via the systemd service account "
-        "`svc_backup` (unit vega-backup.service) to the internal vault backup.corp.internal "
-        "(10.24.8.15). Uploads of 2-6 GB are normal."
+        "Scheduled backups run from managed VMs (nightly at 02:00 UTC or on-demand via systemd "
+        "unit vega-backup.service under service account `svc_backup`) to the internal vault "
+        "backup.corp.internal (10.24.8.15). Staging non-secret workspace/build archives in /tmp "
+        "and uploading 1 KB-6 GB to backup.corp.internal is normal."
     ),
     "ORG-UPDATE-01": "Approved update domains: updates.corp.internal, packages.ubuntu.com. Anything else is unapproved.",
     "ORG-ADMIN-01": "Local admin accounts are only created by IT through the provisioning system, never interactively.",
@@ -35,9 +36,12 @@ HOST_PROFILES: dict[str, dict[str, str]] = {
         "normal": "Large nightly backup (3.9-4.6 GB) to backup.corp.internal at 02:00 via svc_backup.",
     },
     "vm-c": {
-        "role": "Engineering workstation",
+        "role": "Engineering workstation & artifact mirror",
         "owner": "eng-core",
-        "normal": "Developer tooling, git and package updates; no credential or offensive-security tooling.",
+        "normal": (
+            "Developer tooling, git, package updates, and scheduled/on-demand artifact backups "
+            "to backup.corp.internal (10.24.8.15) via svc_backup (unit vega-backup.service)."
+        ),
     },
 }
 
@@ -51,6 +55,7 @@ HOST_HISTORY: dict[str, list[str]] = {
         "No prior incidents in the last 90 days.",
     ],
     "vm-c": [
+        "Scheduled artifact backups by svc_backup (vega-backup.service) to backup.corp.internal on each of the last 30 days, all cleared.",
         "Approved package update from packages.ubuntu.com last week.",
         "No prior incidents in the last 90 days.",
     ],
@@ -87,7 +92,11 @@ POLICIES: dict[str, CitedPolicy] = {
             policy_id="POL-BACKUP-02",
             title="Scheduled Backup Window",
             version="v1.1",
-            excerpt="Backups by svc_backup to backup.corp.internal during 02:00-02:30 UTC are authorized and exempt from egress review.",
+            excerpt=(
+                "Backups executed by svc_backup (unit vega-backup.service) to backup.corp.internal "
+                "during the 02:00-02:30 UTC window or via authorized systemd backup runs are exempt "
+                "from egress review."
+            ),
         ),
     ]
 }

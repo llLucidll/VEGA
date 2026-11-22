@@ -120,6 +120,11 @@ class OracleBridge:
             if rt.council_signal != signal:
                 log.info("Skipping Oracle for %s: signal was reset or superseded during stage delay", signal.signal_id)
                 return None
+        if hasattr(rt, "wait_if_paused"):
+            await rt.wait_if_paused()
+            if rt.council_signal != signal:
+                log.info("Skipping Oracle for %s: signal was reset or superseded while paused", signal.signal_id)
+                return None
         events = list(rt.preserved_evidence.values()) + list(rt.events)
         try:
             assessment = await self.assess(signal, findings, events)
