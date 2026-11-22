@@ -146,6 +146,14 @@ class WardenAuditEntry(BaseModel):
     status: Literal["info", "ok", "warn", "critical"]
 
 
+WardenActionType = Literal[
+    "quarantine_host",
+    "revoke_credentials",
+    "quarantine_and_revoke",
+    "escalate_human",
+]
+
+
 class WardenDecision(BaseModel):
     decision_id: str
     incident_id: str
@@ -160,8 +168,11 @@ class WardenDecision(BaseModel):
     expires_at: datetime
     dry_run: bool = True
     execution_status: Literal[
-        "awaiting_authorization", "executing", "contained_dry_run", "denied"
+        "awaiting_authorization", "executing", "contained", "contained_dry_run", "denied"
     ] = "awaiting_authorization"
+    action_type: WardenActionType | None = None
+    target_hosts: list[str] = Field(default_factory=list)
+    jev_decision: dict[str, Any] | None = None
     audit_log: list[WardenAuditEntry] = Field(default_factory=list)
 
 
@@ -173,6 +184,7 @@ class MonitoredNode(BaseModel):
     status: NodeStatus = "healthy"
     heartbeat_age_sec: int = 1
     identity_sealed: bool = True
+    ambient: bool = False
 
 
 class NetworkEdge(BaseModel):

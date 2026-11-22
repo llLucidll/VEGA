@@ -24,8 +24,50 @@ from .models import (
 )
 
 
+_AMBIENT_INFRA_NODES: tuple[tuple[str, str, str, str], ...] = (
+    ("vm-d", "subj-004", "GitHub CI Runner (us-east)", "eng"),
+    ("vm-e", "subj-005", "AWS EC2 Prod API (i-09f4a)", "ops"),
+    ("vm-f", "subj-006", "Foundry Pipeline Worker", "eng"),
+    ("vm-g", "subj-007", "AWS EKS Auth Gateway", "ops"),
+    ("vm-h", "subj-008", "ML Inference Cluster (GPU)", "eng"),
+    ("vm-i", "subj-009", "Release Signing Bastion", "ops"),
+    ("vm-j", "subj-010", "Audit Ledger Store (AWS RDS)", "fin"),
+    ("vm-k", "subj-011", "Artifact Registry (ECR)", "ops"),
+)
+
+_AMBIENT_INFRA_EDGES: tuple[tuple[str, str, str], ...] = (
+    ("vm-d", "vega-core", "process"),
+    ("vm-e", "vega-core", "network"),
+    ("vm-f", "vega-core", "process"),
+    ("vm-g", "vega-core", "network"),
+    ("vm-h", "vega-core", "process"),
+    ("vm-i", "vega-core", "file"),
+    ("vm-j", "vega-core", "file"),
+    ("vm-k", "vega-core", "network"),
+    ("vm-d", "vm-k", "network"),
+    ("vm-d", "vm-f", "process"),
+    ("vm-e", "vm-g", "network"),
+    ("vm-f", "vm-h", "process"),
+    ("vm-g", "vm-j", "file"),
+    ("vm-i", "vm-k", "file"),
+)
+
+_HOST_VM_PEERS: tuple[tuple[str, str, str], ...] = (
+    ("vm-a", "vm-b", "network"),
+    ("vm-b", "vm-c", "process"),
+    ("vm-a", "vm-c", "network"),
+)
+
+_VM_TO_INFRA_EDGES: tuple[tuple[str, str, str], ...] = (
+    ("vm-a", "vm-e", "network"),
+    ("vm-b", "vm-d", "process"),
+    ("vm-b", "vm-k", "network"),
+    ("vm-c", "vm-i", "process"),
+)
+
+
 def default_nodes() -> list[MonitoredNode]:
-    return [
+    nodes = [
         MonitoredNode(
             source_id="vega-core",
             pseudonym="cluster-hub",
@@ -34,10 +76,31 @@ def default_nodes() -> list[MonitoredNode]:
             identity_sealed=False,
         ),
     ]
+    if settings.demo_topology:
+        for source_id, pseudonym, role, cluster in _AMBIENT_INFRA_NODES:
+            nodes.append(
+                MonitoredNode(
+                    source_id=source_id,
+                    pseudonym=pseudonym,
+                    role=role,
+                    cluster=cluster,  # type: ignore[arg-type]
+                    ambient=True,
+                )
+            )
+    return nodes
 
 
 def default_edges() -> list[NetworkEdge]:
-    return []
+    if not settings.demo_topology:
+        return []
+    return [
+        NetworkEdge(
+            id=f"e-{src}-{dst}",
+            **{"from": src, "to": dst},
+            channel=channel,  # type: ignore[arg-type]
+        )
+        for src, dst, channel in _AMBIENT_INFRA_EDGES
+    ]
 
 
 class VegaRuntimeState:
@@ -98,10 +161,11 @@ class VegaRuntimeState:
             self.oldest_stream_event_at = event.ingested_at
         if not any(n.source_id == event.source_id for n in self.nodes):
             role = str(event.payload.get("host_role") or "Monitored Endpoint")
+            real_count = sum(1 for n in self.nodes if n.source_id != "vega-core" and not n.ambient)
             self.nodes.append(
                 MonitoredNode(
                     source_id=event.source_id,
-                    pseudonym=f"subj-{len(self.nodes):03d}",
+                    pseudonym=f"subj-{real_count + 1:03d}",
                     role=role,
                     cluster="eng",
                 )
@@ -113,6 +177,21 @@ class VegaRuntimeState:
                     channel=event.channel,
                 )
             )
+            present = {n.source_id for n in self.nodes}
+            existing_edges = {(e.from_node, e.to_node) for e in self.edges}
+            peer_links = list(_HOST_VM_PEERS)
+            if settings.demo_topology:
+                peer_links.extend(_VM_TO_INFRA_EDGES)
+            for src, dst, channel in peer_links:
+                if src in present and dst in present and (src, dst) not in existing_edges:
+                    self.edges.append(
+                        NetworkEdge(
+                            id=f"e-peer-{src}-{dst}",
+                            **{"from": src, "to": dst},
+                            channel=channel,  # type: ignore[arg-type]
+                        )
+                    )
+                    existing_edges.add((src, dst))
         else:
             for node in self.nodes:
                 if node.source_id == event.source_id:

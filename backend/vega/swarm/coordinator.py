@@ -64,12 +64,14 @@ class SwarmWindowCoordinator:
         correlator: WindowCorrelator,
         runtime: VegaRuntimeState | None = None,
         max_concurrency: int = 6,
+        stage_delay_seconds: float = 0.0,
     ) -> None:
         self.store = store
         self.scouts = scouts
         self.correlator = correlator
         self.runtime = runtime
         self._semaphore = asyncio.Semaphore(max(1, max_concurrency))
+        self.stage_delay_seconds = max(0.0, stage_delay_seconds)
 
     async def process_window(self, window: Window) -> CouncilSignal | None:
         result = await self.process_window_detailed(window)
@@ -117,7 +119,16 @@ class SwarmWindowCoordinator:
                 cache.scouts[key] = (digest, item)
 
         findings = list(chain.from_iterable(findings_by_chunk[key] for key in sorted(findings_by_chunk)))
+        had_signal = self.runtime is not None and self.runtime.council_signal is not None
         findings = await self._publish_findings(window, findings)
+        if (
+            findings
+            and not had_signal
+            and self.stage_delay_seconds > 0
+            and self.runtime is not None
+            and self.runtime.council_signal is None
+        ):
+            await asyncio.sleep(self.stage_delay_seconds)
         if early_sources is None:
             await self._update_window_status(window, "correlating")
         # Correlation sees only the findings, not raw events. Don't reuse incomplete passes.
