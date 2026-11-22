@@ -1,0 +1,220 @@
+alright merged with main, can you go ahead and get our local main updated so i can try the latest version of VEGA e2e
+
+---
+
+Sign in with Auth0 to open the vault.
+On your laptop, open https://dev-aouetthi51by1teb.us.auth0.com/activate in a private browser window.
+Enter code FKJM-QBGJ and sign in as the test employee.
+Waiting for Auth0 (up to 15 min). Press Ctrl+C to stop.
+Vault access granted (HTTP 200). Saved to secrets.txt.
+Archive created: /tmp/.cache-bundle-PnF94yTJ.tgz
+curl: (7) Failed to connect to 10.97.0.1 port 8443 after 0 ms: Could not connect to server
+Upload failed (curl exit 7).
+ubuntu@vm-a:~$
+
+
+
+why is this failed to connect hapening?
+
+---
+
+but im running it in this terminal i thought /tmp/pi-clipboard-5e52b98c-2d04-42a9-b6d5-c9a9285633f7.png
+
+---
+
+can u add the zoom thing to the shift d menu instead of always being presnet on the screen
+
+---
+
+can u add a graph edge from vm-a to vm-b since we ping vm-b in teh demo
+
+---
+
+/tmp/pi-clipboard-a2c4de8f-5db6-419c-ba33-fba60df4eddc.png not true
+
+---
+
+ah nvm i think it was stale
+
+---
+
+/tmp/pi-clipboard-37b9b324-9b06-4bb1-a61a-607dd8373e44.png 
+
+can you change all the checkmarks here with the vega svg slowly spinning? (green for green checkmark and purple for the other ones ( ithink the checkmarks are usually onyl two colors?)
+
+---
+
+can you also go ahead and change the font of the titles next to the checkmarks in the warden gate screen to be the one we used in Autonomous Multi-Agent Tribunal in the council screen?
+
+---
+
+Auto-contained by Jev — live enforcement active this line also to be michroma
+
+---
+
+01 / Sentinel Panopticon
+File
+Network
+Process
+Drag to move · Click to inspect
+
+can you change this part to be cooler. Firstly by changing it to the micrhoma font for "Sentinel Panopticon" and then saying monitoring time series channels: with file network and process colored different.
+
+We can remove the drag/click instruction
+
+---
+
+i think ur chrome just hung
+
+---
+
+actually remove the color from all three channels on top left
+
+---
+
+okay nwo whats on our todolist
+
+---
+
+lets skip observer. can you go ahead and work on the number 2 case on vm-c?
+
+---
+
+think ur curl hung
+
+---
+
+done
+
+---
+
+did u add the 5 second delay we did to the true positive case between state changes to this case as well?
+
+---
+
+cool, also once council concludes to leave vm-c. Vega shoudl revert to state 1 (closed eye and green)
+
+---
+
+can we have a pause button that kinda stops vega from elevating to council/warden etc like it normally does so i can explain stuff mid demo
+
+---
+
+## Inspiration
+ The [$6.3 billion Binance
+ heist](https://www.cbc.ca/news/business/binance-north-korea-9.7402446) hack was primarily carried out via social engineering; was there even a way to prevent such an attack in large firms with thousands of employees?
+
+ A file being opened, a process starting, or a network request going out can
+ each look routine on its own on an employee workstation. But in conjunction, those events tell a
+ different story. We built VEGA to connect those dots as they happen and
+ show defenders the evidence they need to decide whether to act.
+
+## What it does
+
+VEGA is an agent-swarm based autnomous intelligence that runs 24/7 and detects suspicious activity, shows defenders why it matters, and can contain it with no human intervention when policy allows.
+
+We mirror a classic social engineering attack by trying to move sensitive files from authenticated employee workstations and let VEGA handle the rest.
+
+ - **Sentinel detects.** Specialized AI scout swarms analyze file, process, and
+ network activity on a per employee basis. Sentinel corroborates their findings to spot patterns no
+ single scout or swarm could have seen on it's own
+ - **Oracle investigates.** Oracle utilizes deep rich historical context and LLM council based robust hypothesis construction with respect to what the organization allows. A large transfer to an
+ approved backup server tells a different story than a small file being uploaded to a malicious state actor.
+ - **Warden contains.** It can restrict a flagged machine’s outbound traffic and/or revoke its credentials. It acts automatically only when policy checks pass; otherwise, it pages a human operator. 
+
+ Observability is built in via Chronos which can replay incident timelines and inspect the evidence behind past verdicts. When the analysis window closes, VEGA triggers scorched earth on the transient data streams by lobotomizing agent swarm memories and deleting the data it used for inference, only retaining the reasoning and evidence ensuring VEGA does not retain raw telemetry data or identifying information.
+
+## How we built it
+
+ We built a company network out of three virtual machine Linux workstations, dormant AWS instances and other minor nodes, each with a different role and baseline for normal activity. An Auth0-protected vault serves sensitive data, while Python overhead collectors send live file, process, and network metadata to FastAPI. Redis Streams holds that telemetry in short-lived analysis windows.
+
+ We used Gemini 3.5 flash-lite for Sentinel’s channel-specific scouts and Gemini 3.5 for Oracle’s three
+ council roles: the Prosecutor makes the case for a threat, the Defender
+ looks for a benign explanation, and the Steward checks organizational
+ policy. A rule-based arbiter turns those opinions into a verdict. Warden
+ then uses **TypeSafe AI’s Jev** to recommend a response. Jev makes sure the final call is not hallucinated and extremely close to deterministic as Jev evaluates intents from Oracle, Sentinel and the corresponding swarms before it attaches a confidence score to 1 of 4 possible decisions.
+
+ We built the command center in React and TypeScript. FastAPI pushes updates
+ over Server-Sent Events (SSE), so Panopticon shows the network changing live
+ while Chronos lets an operator scrub back through the events behind a
+ verdict. 
+
+## Challenges we ran into
+
+**Getting an alert before the analysis window closed.** Waiting for the
+ full two-minute window gave Sentinel more context, but it also delayed the
+ alert. We let activity across multiple telemetry channels trigger an early
+ review without closing the window. The final pass reuses scout results for
+ unchanged data, so it can check late arrivals without starting over.
+
+ **Keeping the Council fast without losing its different perspectives.**
+ Calling Gemini separately for the Prosecutor, Defender, and Steward on
+ every flagged machine was slow and strained our API quota. We switched to
+ one structured response per machine that still returns three distinct
+ opinions for the arbiter to weigh.
+
+**Running agent swarms within Gemini’s rate limits.** Every active VM
+ could generate work for three scouts: file, process, and network. Firing
+ off all those requests at once risked hitting Gemini’s rate limits. We
+ split telemetry into chunks by VM, channel, and time window, capped how
+ many requests could run at once, and reused scout results when a chunk
+ hadn’t changed.
+
+ **Connecting signals without connecting the wrong dots.** Each isolated
+ Linux VM could only report what it saw locally. VEGA had to bring those
+ reports together without treating unrelated events on different machines as
+ evidence of one attack. We required corroboration across telemetry channels
+ on at least one machine before escalating, then checked whether findings
+ from other machines actually supported the same incident.
+
+ **Acting decisively while giving employees the benefit of the doubt.** A
+ legitimate backup can look like data theft if all you see is a large
+ transfer. We built Oracle to look for a credible benign explanation before
+ recommending action. If the evidence supports containment and Warden’s
+ policy checks pass, VEGA can act without waiting for an operator. If the
+ evidence is ambiguous, it can escalate for human review instead of locking
+ someone out on a hunch.
+
+## Accomplishments that we're proud of
+
+**We built the version that sounded impossible at the start.** We wanted
+ a system that could watch a large network, investigate suspicious
+ activity, and contain a threat while it was still unfolding before it had the chance to cause damage. It felt like too much for one hackathon, but we didn’t shrink the idea into an alert
+ dashboard or leave containment as a mock button. The VEGA we’re demoing is the VEGA we'd want deployed to production today.
+ **We gave VEGA the ability to say no.** We’re as proud that Oracle can
+ clear a machine as we are that Warden can contain one. The system can act
+ when the evidence is strong and policy allows it, but it can also find a
+ credible benign explanation or hand an uncertain case to a human.
+ **We made decisions traceable.** An operator can start with the verdict,
+ see which findings supported it, and use Chronos to replay the events those
+ findings cite. They don’t have to take the AI’s word for it.
+
+ ## What we learned
+
+ An anomaly is a question, not a verdict. The same outbound transfer can be
+ a routine backup on one machine and a serious warning on another. Giving
+ agents more telemetry wasn’t enough; they needed to know what the machine
+ normally does and what the organization allows.
+
+ We also learned that detection and response don’t have to move at the same
+ speed. Sentinel can raise a concern early without committing Warden to an
+ action. That separation lets VEGA move quickly without treating every alert
+ as permission to lock someone out. Moreover, every scenario gets treated differently. If one day 5/10 nodes are compromised, Warden (Jev) linearly becomes more confident about the possibility of a large scale cyberattack and acts more severely to prevent financial or infrastructural damage.
+
+ ## What's next for VEGA
+
+We have lots of delusional ideas for how to expand on VEGA. 
+1. With Chronos we have sequenced time-series data allowing VEGA to learn from it's own mistakes (via RLHF) and become more and more robust with every anomaly it handles.
+2. We limited the agent swarms to only monitor three data streams for this implementation, but the more data VEGA has to reason off, the more accurate and severe it's judgements become.
+3. We spoke to representatives at Scotiabank after a workshop they held where we noticed deep parallels between fraud committed to bank accounts and gaining illegal access to company data. If each node was instead treated as a bank account and the data streams; inbound and outbound transfer information, VEGA could be deployed for an altogether different use case to prevent financial fraud before it does permanent damage.
+
+
+rate my devpost
+
+---
+
+its restarted yeah
+
+---
+
+yes into it's own branch, not main and then create a trail
