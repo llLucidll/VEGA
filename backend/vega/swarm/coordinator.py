@@ -162,6 +162,19 @@ class SwarmWindowCoordinator:
             chunks_reused=chunks_reused,
         )
 
+    def _cleared_sources_for_window(self, window_id: str) -> set[str]:
+        if self.runtime is None:
+            return set()
+        window_sig = self.runtime.window_signals.get(window_id)
+        assessment = self.runtime.oracle_assessment
+        if (
+            window_sig is None
+            or assessment is None
+            or assessment.signal_id != window_sig.signal_id
+        ):
+            return set()
+        return {v.source_id for v in assessment.verdicts if v.verdict == "NO_ACTION"}
+
     async def _publish_findings(self, window: Window, findings: list[ScoutFinding]) -> list[ScoutFinding]:
         if self.runtime is None:
             return findings
@@ -169,18 +182,20 @@ class SwarmWindowCoordinator:
         def key(finding: ScoutFinding):
             return finding.source_id, finding.channel, finding.signal, frozenset(finding.evidence_event_ids)
 
+        cleared_in_window = self._cleared_sources_for_window(window.id)
         known = {key(f): f for f in self.runtime.findings if f.window_id == window.id}
         for finding in findings:
             if key(finding) in known:
                 continue
             known[key(finding)] = finding
             self.runtime.findings.append(finding)
-            for node in self.runtime.nodes:
-                if node.source_id == finding.source_id and node.status == "healthy":
-                    node.status = "elevated"
-            for edge in self.runtime.edges:
-                if edge.from_node == finding.source_id:
-                    edge.anomalous = True
+            if finding.source_id not in cleared_in_window:
+                for node in self.runtime.nodes:
+                    if node.source_id == finding.source_id and node.status == "healthy":
+                        node.status = "elevated"
+                for edge in self.runtime.edges:
+                    if edge.from_node == finding.source_id:
+                        edge.anomalous = True
             await self.runtime.publish("finding", finding)
         return list({known[key(f)].finding_id: known[key(f)] for f in findings}.values())
 
@@ -205,8 +220,13 @@ class SwarmWindowCoordinator:
             signal.snapshot_preserved |= previous.snapshot_preserved
 
         self.runtime.window_signals[signal.window_id] = signal
+        cleared_in_window = self._cleared_sources_for_window(signal.window_id)
         for node in self.runtime.nodes:
-            if node.source_id not in signal.source_ids or node.status == "isolated":
+            if (
+                node.source_id not in signal.source_ids
+                or node.status == "isolated"
+                or node.source_id in cleared_in_window
+            ):
                 continue
             if signal.severity == "SEV1":
                 node.status = "compromised"

@@ -467,3 +467,58 @@ async def test_pipeline_pause_holds_and_resumes_escalation(monkeypatch):
         assert res2.json() == {"pipeline_paused": False}
         await asyncio.wait_for(waiter, timeout=1.0)
     api.runtime.reset()
+
+
+async def test_final_pass_does_not_re_elevate_oracle_cleared_host():
+    from vega.models import Window
+    from vega.streams import InMemoryStreamStore
+    from vega.swarm.coordinator import SwarmWindowCoordinator
+    from vega.swarm.correlator import GeminiWindowCorrelator
+    from vega.swarm.reasoner import HeuristicStructuredReasoner
+    from vega.swarm.scouts import GeminiChannelScout
+
+    rt = VegaRuntimeState()
+    now = datetime.now(timezone.utc)
+    rt.record_event(
+        StoredEvent(
+            schema_version=1,
+            run_id="r1",
+            event_id="evt-c-1",
+            source_id="vm-c",
+            channel="process",
+            event_time=now,
+            ingested_at=now,
+            payload={"host_role": "Linux VM Endpoint"},
+        )
+    )
+    win = Window(id="W-1000", start=now, end=now + timedelta(minutes=2), status="scouting")
+    base_signal, _, _ = _fixture()
+    sig = base_signal.model_copy(update={"window_id": "W-1000", "source_ids": ["vm-c"]})
+    rt.window_signals["W-1000"] = sig
+    rt.council_signal = sig
+    rt.oracle_assessment = _assessment([_verdict("vm-c", "NO_ACTION")], signal_id=sig.signal_id)
+
+    reasoner = HeuristicStructuredReasoner()
+    coord = SwarmWindowCoordinator(
+        store=InMemoryStreamStore(),
+        scouts={ch: GeminiChannelScout(channel=ch, reasoner=reasoner) for ch in ("file", "network", "process")},
+        correlator=GeminiWindowCorrelator(reasoner=reasoner),
+        runtime=rt,
+    )
+    new_finding = ScoutFinding(
+        finding_id="fnd-late",
+        window_id="W-1000",
+        source_id="vm-c",
+        channel="process",
+        signal="late_duplicate_signal",
+        rationale="Late pass finding",
+        evidence_event_ids=["evt-c-1"],
+        confidence="high",
+        detector_version="test",
+        created_at=now,
+    )
+    await coord._publish_findings(win, [new_finding])
+    await coord._publish_signal(sig)
+
+    assert next(n for n in rt.nodes if n.source_id == "vm-c").status == "healthy"
+    assert all(not e.anomalous for e in rt.edges if e.from_node == "vm-c")
