@@ -607,7 +607,9 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
 
               <div className={`leading-tight ${isCore ? `${wardenCore ? 'absolute bottom-4' : 'relative'} z-10 drop-shadow-[0_1px_4px_rgba(5,8,17,0.95)]` : ''}`}>
                 <div className={`flex items-center gap-1.5 ${isCore ? 'justify-center' : ''}`}>
-                  <span className={`font-mono-tabular font-semibold text-slate-100 ${isCore ? 'text-sm tracking-widest uppercase' : 'text-[11px]'}`}>
+                  <span
+                    className={`text-slate-100 ${isCore ? 'font-display text-sm tracking-[0.06em] lowercase' : 'font-mono-tabular text-[11px] font-medium'}`}
+                  >
                     {node.source_id}
                   </span>
                   {node.identity_sealed && (

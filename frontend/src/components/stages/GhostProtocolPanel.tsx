@@ -97,10 +97,11 @@ export function GhostProtocolPanel({ headerHeight }: { headerHeight: number }) {
                 key={ch}
                 type="button"
                 onClick={() => setChannelFilter(ch)}
-                className={`rounded-md px-2.5 py-1 font-mono-tabular text-[11px] uppercase transition ${
+                aria-pressed={channelFilter === ch}
+                className={`rounded border px-2 py-0.5 font-mono-tabular text-[11px] transition ${
                   channelFilter === ch
-                    ? 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-400/40'
-                    : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
+                    ? 'border-slate-500 text-slate-100'
+                    : 'border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                 }`}
               >
                 {ch}
@@ -113,8 +114,9 @@ export function GhostProtocolPanel({ headerHeight }: { headerHeight: number }) {
             {/* Scout Findings */}
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-mono-tabular text-[11px] font-semibold tracking-wider text-slate-300 uppercase">
-                  Channel Scout Findings ({nodeFindings.length})
+                <h3 className="font-display text-[11px] tracking-[0.04em] text-slate-300 lowercase">
+                  Channel Scout Findings
+                  <span className="ml-1.5 font-mono-tabular text-slate-500">{nodeFindings.length}</span>
                 </h3>
                 <span className="font-mono-tabular text-[10px] text-slate-500">
                   2-MIN WINDOW SWARM
@@ -175,8 +177,9 @@ export function GhostProtocolPanel({ headerHeight }: { headerHeight: number }) {
 
             {/* Telemetry Stream */}
             <section>
-              <h3 className="mb-2 font-mono-tabular text-[11px] font-semibold tracking-wider text-slate-300 uppercase">
-                Ephemeral Channel Telemetry ({nodeEvents.length})
+              <h3 className="mb-2 font-display text-[11px] tracking-[0.04em] text-slate-300 lowercase">
+                Ephemeral Channel Telemetry
+                <span className="ml-1.5 font-mono-tabular text-slate-500">{nodeEvents.length}</span>
               </h3>
               <div className="space-y-2">
                 {nodeEvents.map((ev) => {
