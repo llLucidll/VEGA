@@ -68,11 +68,14 @@ export function OracleAssessmentPanel() {
   return (
     <div data-oracle-panel className="vega-panel overflow-hidden rounded-2xl p-5 lg:col-span-7">
       <header className="flex items-baseline justify-between gap-3 border-b border-slate-800/80 pb-3">
-        <span className="font-mono-tabular text-[11px] font-semibold tracking-wider text-purple-300/90 uppercase">
-          Oracle Reading
-        </span>
+        <h2 className="min-w-0 truncate">
+          <span className="font-mono-tabular text-[11px] font-semibold tracking-wider text-purple-300/90 uppercase">
+            Oracle Reading{assessment && ':'}
+          </span>
+          {assessment && <span className="ml-1.5 text-[11px] text-slate-500">{readingSummary(assessment)}</span>}
+        </h2>
         {assessment && (
-          <span className="truncate font-mono-tabular text-[10px] text-slate-500">
+          <span className="max-w-[40%] shrink-0 truncate font-mono-tabular text-[10px] text-slate-600">
             {assessment.incident_id} • {assessment.model_version}
           </span>
         )}
@@ -91,6 +94,20 @@ export function OracleAssessmentPanel() {
       )}
     </div>
   )
+}
+
+/** One-line summary built from the actual reading, e.g. "Tested 3 hypotheses · 1 plausible · 4 policies cited". */
+function readingSummary(a: OracleAssessment) {
+  const tested = a.competing_explanations.length
+  const plausible = a.competing_explanations.filter((h) => h.status === 'plausible').length
+  const policies = a.cited_policies.length
+  return [
+    `Tested ${tested} ${tested === 1 ? 'hypothesis' : 'hypotheses'}`,
+    plausible > 0 && `${plausible} plausible`,
+    `${policies} ${policies === 1 ? 'policy' : 'policies'} cited`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** Animates a reading the first time it is shown; afterwards renders it straight away. */
