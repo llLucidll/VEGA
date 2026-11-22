@@ -108,7 +108,8 @@ async def test_sentinel_sev1_reaches_oracle_and_is_published(monkeypatch):
     assert bridge is not None
     queue = runtime.subscribe()
 
-    result = await coordinator.process_window_detailed(window)
+    sources = {event.source_id for event in events}
+    result = await coordinator.process_window_detailed(window.model_copy(), early_sources=sources)
     await bridge.drain()
 
     assert result.signal is not None, "Sentinel did not escalate the demo telemetry"
@@ -118,6 +119,12 @@ async def test_sentinel_sev1_reaches_oracle_and_is_published(monkeypatch):
     assert assessment.signal_id == result.signal.signal_id
     assert [v.source_id for v in assessment.verdicts] == result.signal.source_ids
     assert any(f.startswith("event: oracle_assessment") for f in _frames(queue))
+    assert window.status == "collecting"
+
+    final = await coordinator.process_window_detailed(window)
+    await bridge.drain()
+    assert final.signal == result.signal
+    assert not any(f.startswith("event: oracle_assessment") for f in _frames(queue))
 
 
 def test_attach_is_a_no_op_when_disabled(monkeypatch):

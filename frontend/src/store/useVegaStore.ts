@@ -144,6 +144,7 @@ export const useVegaStore = create<VegaState>((set) => ({
     set({
       stage: 'panopticon',
       threatMode: 'WATCH',
+      ttlSecondsRemaining: initialScenario.retention_seconds,
       nodes: [
         {
           source_id: 'vega-core',
@@ -181,7 +182,10 @@ export const useVegaStore = create<VegaState>((set) => ({
       const events = snapshot.events.map((ev) =>
         flaggedIds.has(ev.event_id) ? { ...ev, suspicious: true } : ev,
       )
+      const selectedIdx = events.findIndex((ev) => ev.event_id === state.selectedEventId)
       return {
+        selectedEventId: events[selectedIdx]?.event_id ?? null,
+        chronosCursorIndex: selectedIdx < 0 ? null : selectedIdx,
         threatMode: snapshot.threat_mode,
         activeWindowId: snapshot.active_window_id,
         ttlSecondsRemaining: snapshot.ttl_seconds_remaining,
@@ -236,7 +240,11 @@ export const useVegaStore = create<VegaState>((set) => ({
       return {
         stage,
         selectedNodeId:
-          stage === 'ghost_protocol' && !state.selectedNodeId ? 'vm-a' : state.selectedNodeId,
+          stage === 'ghost_protocol' && !state.selectedNodeId
+            ? (state.findings.at(-1)?.source_id ??
+              state.nodes.find((n) => n.source_id !== 'vega-core')?.source_id ??
+              (state.dataMode === 'SIMULATED' ? 'vm-a' : state.nodes[0]?.source_id ?? null))
+            : state.selectedNodeId,
       }
     }),
 

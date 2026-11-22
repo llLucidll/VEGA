@@ -53,7 +53,7 @@ export interface Window {
   id: string
   start: string // inclusive ISO timestamp
   end: string // exclusive ISO timestamp
-  status: 'collecting' | 'scouting' | 'correlating' | 'clean' | 'flagged'
+  status: 'collecting' | 'scouting' | 'correlating' | 'clean' | 'flagged' | 'failed'
 }
 
 export interface ScoutFinding {
