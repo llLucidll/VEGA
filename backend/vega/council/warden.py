@@ -111,26 +111,25 @@ class TypeSafeJevEvaluator:
                     questions={
                         "containment_action": Choice(
                             instructions=(
-                                "Select the single mutually exclusive containment action for the flagged host(s) "
+                                "Select the single most appropriate containment action for the flagged host(s) "
                                 "based on the Oracle assessment, scout findings, and telemetry events."
                             ),
                             criteria={
                                 "quarantine_host": (
-                                    "Isolate ONLY host network egress when host staging or exfiltration occurred "
-                                    "WITHOUT any Vault access, Auth0 token abuse, or secret/key file reads."
+                                    "Isolate host network egress only, when staging or exfiltration occurred "
+                                    "without Vault access or credential abuse."
                                 ),
                                 "revoke_credentials": (
-                                    "Revoke ONLY Auth0 and Vault credentials when tokens, secrets, or Vault access "
-                                    "were abused WITHOUT host archive staging or outbound network exfiltration."
+                                    "Revoke Auth0 and Vault credentials only, when tokens or secrets were abused "
+                                    "without host archive staging or outbound exfiltration."
                                 ),
                                 "quarantine_and_revoke": (
-                                    "Isolate host network egress AND revoke Auth0/Vault credentials when BOTH "
-                                    "secret/Vault/credential access AND host staging or outbound exfiltration occurred "
-                                    "(or when Oracle recommends isolating and revoking sessions)."
+                                    "Both isolate host network egress AND revoke Auth0/Vault credentials "
+                                    "when both secret/Vault access and host staging or exfiltration occurred."
                                 ),
                                 "escalate_human": (
-                                    "Escalate to a human operator when evidence is ambiguous, incomplete, "
-                                    "involves a protected host, or Oracle did not clearly recommend containment."
+                                    "Do not automate containment; evidence is ambiguous, incomplete, "
+                                    "involves a protected host, or requires human operator judgment."
                                 ),
                             },
                         ),
