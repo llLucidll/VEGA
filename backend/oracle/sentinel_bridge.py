@@ -108,7 +108,7 @@ class OracleBridge:
             return None
 
         current = rt.council_signal
-        if current is None or current.signal_id != signal.signal_id:
+        if current != signal:
             log.info("Discarding assessment for %s: signal was reset or superseded", signal.signal_id)
             return None
         rt.oracle_assessment = assessment
@@ -139,9 +139,13 @@ def attach(coordinator, runtime, **kwargs) -> OracleBridge | None:
     bridge = OracleBridge(runtime, **kwargs)
     original = coordinator.process_window_detailed
 
-    async def process_window_detailed(window):
-        result = await original(window)
-        bridge.schedule(result.signal, result.findings)
+    async def process_window_detailed(window, **options):
+        previous = runtime.window_signals.get(window.id)
+        result = await original(window, **options)
+        if result.signal is not None and result.signal != previous:
+            # The final pass can reuse the early signal without reopening the case.
+            refs = set(result.signal.finding_refs)
+            bridge.schedule(result.signal, [f for f in runtime.findings if f.finding_id in refs])
         return result
 
     coordinator.process_window_detailed = process_window_detailed

@@ -43,6 +43,7 @@ async def test_redis_stream_store_end_to_end():
         )
         sid = await store.append(ev1)
         assert "-" in sid
+        assert await store.oldest_event_time() is not None
 
         window = Window(
             id="W-redis",
@@ -59,6 +60,7 @@ async def test_redis_stream_store_end_to_end():
 
         chunks_after = await store.read_window(window)
         assert chunks_after == {}
+        assert await store.oldest_event_time() is None
 
         # Appending after trim still works cleanly
         t1 = datetime.now(timezone.utc)
@@ -77,6 +79,15 @@ async def test_redis_stream_store_end_to_end():
             Window(id="W-redis-2", start=t1 - timedelta(seconds=5), end=t1 + timedelta(seconds=30))
         )
         assert [e.event_id for e in chunks_new[("vm-b", "network")]] == ["evt-r2"]
+
+        # XDEL uses stored ingest time, not the millisecond Redis ID, for the boundary.
+        end = t1 + timedelta(microseconds=1)
+        await store.append(ev2.model_copy(update={"event_id": "evt-next", "ingested_at": end}))
+        previous = Window(id="W-prev", start=t1, end=end)
+        assert await store.purge_window(previous) == 1
+        assert await store.read_window(previous) == {}
+        next_window = Window(id="W-next", start=end, end=end + timedelta(seconds=3))
+        assert [e.event_id for e in (await store.read_window(next_window))[("vm-b", "network")]] == ["evt-next"]
 
         await store.reset_demo_streams()
         assert (

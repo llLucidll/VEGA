@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
+from vega.config import settings
 from vega.models import StoredEvent, Window
+from vega.state import VegaRuntimeState
 from vega.streams import InMemoryStreamStore
 
 
@@ -54,3 +56,29 @@ async def test_trim_expired_and_reset():
 
     await store.reset_demo_streams()
     assert await store.read_window(window) == {}
+
+
+async def test_oldest_event_time_and_ttl_countdown():
+    store = InMemoryStreamStore()
+    assert await store.oldest_event_time() is None
+
+    now = datetime.now(timezone.utc)
+    t_old = now - timedelta(seconds=120)
+    t_new = now - timedelta(seconds=15)
+    ev_old = _make_event("e-old", "vm-a", "file", t_old)
+    ev_new = _make_event("e-new", "vm-a", "network", t_new)
+
+    await store.append(ev_old)
+    await store.append(ev_new)
+    assert await store.oldest_event_time() == t_old
+
+    runtime = VegaRuntimeState()
+    assert runtime.compute_ttl_seconds_remaining(now) == settings.retention_seconds
+    runtime.record_event(ev_old)
+    runtime.record_event(ev_new)
+    assert runtime.compute_ttl_seconds_remaining(now) == settings.retention_seconds - 120
+
+    await store.trim_expired(retention_seconds=60)
+    assert await store.oldest_event_time() == t_new
+    runtime.oldest_stream_event_at = await store.oldest_event_time()
+    assert runtime.compute_ttl_seconds_remaining(now) == settings.retention_seconds - 15

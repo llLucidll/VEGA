@@ -11,12 +11,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://127.0.0.1:6379/0"
     retention_seconds: int = 600
     cleanup_interval_seconds: int = 5
-    window_seconds: int = 120
+    window_seconds: int = Field(default=120, ge=1)
+    early_analysis: bool = True
     channels: tuple[str, ...] = ("file", "network", "process")
 
     swarm_mode: Literal["auto", "gemini", "heuristic"] = "auto"
     swarm_max_concurrency: int = 6
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     gemini_api_key: str = Field(
         default="",
         validation_alias=AliasChoices("VEGA_GEMINI_API_KEY", "GEMINI_API_KEY"),

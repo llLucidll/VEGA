@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Query, status
+from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -82,6 +82,7 @@ scheduler = WindowScheduler(
     coordinator=coordinator,
     runtime=runtime,
     window_seconds=settings.window_seconds,
+    early_analysis=settings.early_analysis,
 )
 
 # Oracle council: runs on every SEV1 signal when ORACLE_BRIDGE=1 (no effect otherwise).
@@ -95,6 +96,7 @@ async def _cleanup_loop() -> None:
         await asyncio.sleep(settings.cleanup_interval_seconds)
         with suppress(StreamStoreUnavailable):
             await store.trim_expired(settings.retention_seconds)
+            runtime.oldest_stream_event_at = await store.oldest_event_time()
 
 
 @asynccontextmanager
@@ -142,23 +144,27 @@ async def health() -> dict[str, object]:
         "channels": list(settings.channels),
         "retention_seconds": settings.retention_seconds,
         "window_seconds": settings.window_seconds,
+        "early_analysis": settings.early_analysis,
     }
 
 
 @app.post("/events", response_model=IngestResponse, status_code=status.HTTP_201_CREATED)
 async def ingest_event(event: EventIn) -> IngestResponse:
-    try:
-        stream_id, stored = await mapper.ingest(event)
-    except StreamStoreUnavailable as exc:
-        raise HTTPException(status_code=503, detail="Stream store unavailable") from exc
-
-    runtime.record_event(stored)
-    await runtime.publish("event", stored)
+    async with scheduler.lifecycle_lock:
+        try:
+            stream_id, stored = await mapper.ingest(event)
+        except StreamStoreUnavailable as exc:
+            raise HTTPException(status_code=503, detail="Stream store unavailable") from exc
+        runtime.record_event(stored)
+        await runtime.publish("event", stored)
+        scheduler.observe(stored)
     return IngestResponse(stream_id=stream_id)
 
 
 @app.get("/api/state", response_model=StateSnapshot)
 async def get_state() -> StateSnapshot:
+    with suppress(StreamStoreUnavailable):
+        runtime.oldest_stream_event_at = await store.oldest_event_time()
     return runtime.snapshot()
 
 
@@ -168,6 +174,8 @@ async def stream_events() -> StreamingResponse:
 
     async def event_generator():
         try:
+            with suppress(StreamStoreUnavailable):
+                runtime.oldest_stream_event_at = await store.oldest_event_time()
             yield f"event: snapshot\ndata: {runtime.snapshot().model_dump_json(by_alias=True)}\n\n"
             while True:
                 try:
@@ -178,7 +186,11 @@ async def stream_events() -> StreamingResponse:
         finally:
             runtime.unsubscribe(queue)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/demo/flush-window")
@@ -190,6 +202,7 @@ async def flush_window(wait: bool = Query(default=True)) -> dict[str, object]:
             "window_id": result.window.id,
             "status": result.window.status,
             "chunks_analyzed": result.chunks_analyzed,
+            "chunks_reused": result.chunks_reused,
             "findings_count": len(result.findings),
             "council_signal": (
                 result.signal.model_dump(mode="json") if result.signal is not None else None
@@ -213,6 +226,14 @@ async def authorize_warden(decision_id: str) -> WardenDecision:
     decision.approval_ref = f"APR-LIVE-{decision_id[-4:]}"
     decision.execution_status = "contained_dry_run"
     runtime.threat_mode = "CONTAINED"
+    targets = set(runtime.council_signal.source_ids if runtime.council_signal else [])
+    for node in runtime.nodes:
+        if node.source_id != "vega-core" and (
+            node.source_id in targets
+            or node.source_id in decision.trusted_target_ref
+            or node.source_id in decision.scope
+        ):
+            node.status = "isolated"
 
     entry = WardenAuditEntry(
         id=f"aud-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
@@ -269,13 +290,21 @@ async def ask_observer(req: ObserverAskRequest) -> ObserverQA:
     )
 
 
+@app.post("/api/demo/exfil-sink")
+async def demo_exfil_sink(request: Request) -> dict[str, object]:
+    """Harmless local upload sink for VM exfiltration demos (discards payload)."""
+    body = await request.body()
+    return {"status": "sink_received", "bytes": len(body)}
+
+
 @app.post("/api/demo/reset")
 async def reset_demo() -> dict[str, str]:
-    try:
-        await store.reset_demo_streams()
-    except StreamStoreUnavailable as exc:
-        raise HTTPException(status_code=503, detail="Stream store unavailable") from exc
-    await scheduler.reset()
-    runtime.reset()
-    await runtime.publish("snapshot", runtime.snapshot())
+    async with scheduler.lifecycle_lock:
+        try:
+            await store.reset_demo_streams()
+        except StreamStoreUnavailable as exc:
+            raise HTTPException(status_code=503, detail="Stream store unavailable") from exc
+        await scheduler.reset()
+        runtime.reset()
+        await runtime.publish("snapshot", runtime.snapshot())
     return {"status": "reset"}
