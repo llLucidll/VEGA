@@ -56,7 +56,7 @@ function useStill() {
 
 const skin = 'rounded-lg border border-slate-800 bg-slate-950/60'
 const blank = 'rounded-lg border border-slate-800 bg-slate-900/70'
-const label = 'font-mono-tabular text-[10px] tracking-[0.18em] text-slate-500 uppercase'
+const label = 'font-display text-[10px] tracking-[0.04em] text-slate-500 lowercase'
 const hidden: CSSProperties = { backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }
 
 /** Oracle's reading: the verdict first, then blank cards rise, turn face-up, and settle onto the panel. */
@@ -69,7 +69,7 @@ export function OracleAssessmentPanel() {
     <div data-oracle-panel className="vega-panel overflow-hidden rounded-2xl p-5 lg:col-span-7">
       <header className="flex items-baseline justify-between gap-3 border-b border-slate-800/80 pb-3">
         <h2 className="min-w-0 truncate">
-          <span className="font-mono-tabular text-[11px] font-semibold tracking-wider text-purple-300/90 uppercase">
+          <span className="font-mono-tabular text-[11px] font-medium tracking-wider text-purple-300/90 uppercase">
             Oracle Reading{assessment && ':'}
           </span>
           {assessment && <span className="ml-1.5 text-[11px] text-slate-500">{readingSummary(assessment)}</span>}
@@ -195,13 +195,13 @@ function VerdictLine({ assessment: a }: { assessment: OracleAssessment }) {
       initial={still ? false : { opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: EASE }}
-      className="px-3 text-lg leading-snug text-slate-400"
+      className="px-3 font-display text-[15px] leading-relaxed text-slate-500"
     >
       {groups.length
         ? groups.map((g, i) => (
             <span key={g.verdict}>
               {i > 0 && <span className="mx-2.5 text-slate-700">·</span>}
-              <span className="font-medium text-slate-50">{VERB[g.verdict]}</span> {g.hosts.join(', ')}
+              <span className="text-slate-50">{VERB[g.verdict]}</span> {g.hosts.join(', ')}
             </span>
           ))
         : <span className="text-slate-100">{a.recommended_action}</span>}

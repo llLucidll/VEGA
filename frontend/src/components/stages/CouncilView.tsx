@@ -31,7 +31,7 @@ export function CouncilView() {
                 <VegaEye state={eyeState} className="h-auto w-7 shrink-0" />
                 03 / ORACLE — THE COUNCIL
               </div>
-              <h1 className="mt-1 text-lg font-medium text-slate-100">
+              <h1 className="mt-1.5 font-display text-base text-slate-100">
                 Autonomous Multi-Agent Tribunal
               </h1>
               <p className="mt-0.5 text-xs text-slate-400">
@@ -62,7 +62,7 @@ export function CouncilView() {
               <button
                 type="button"
                 onClick={() => vegaSource.jumpToStage('blackout')}
-                className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-semibold tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
+                className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-medium tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
               >
                 <span>Escalate to Warden Gate</span>
                 <ArrowRight className="h-4 w-4" />
@@ -75,7 +75,7 @@ export function CouncilView() {
             {/* Left: Sentinel Correlator Report */}
             <div className="vega-panel rounded-2xl p-5 lg:col-span-5">
               <header className="truncate border-b border-slate-800/80 pb-3">
-                <span className="font-mono-tabular text-[11px] font-semibold tracking-wider text-sky-300/90 uppercase">
+                <span className="font-mono-tabular text-[11px] font-medium tracking-wider text-sky-300/90 uppercase">
                   Sentinel Correlator Handoff{councilSignal && ':'}
                 </span>
                 {councilSignal && (
@@ -115,7 +115,7 @@ export function CouncilView() {
 
                   <div className="border-t border-slate-800 pt-3">
                     <div className="mb-2 flex items-baseline justify-between gap-3">
-                      <span className="font-mono-tabular text-[10px] tracking-[0.18em] text-slate-500 uppercase">
+                      <span className="font-display text-[10px] tracking-[0.04em] text-slate-500 lowercase">
                         Preserved evidence
                       </span>
                       <span className="font-mono-tabular text-[10px] text-slate-600">
