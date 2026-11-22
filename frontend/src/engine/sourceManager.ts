@@ -55,11 +55,11 @@ export const vegaSource: VegaDataSource = {
   advanceCue() {
     activeSource().advanceCue()
   },
-  authorizeContainment() {
-    activeSource().authorizeContainment()
+  authorizeContainment(decisionId) {
+    activeSource().authorizeContainment(decisionId)
   },
-  denyContainment() {
-    activeSource().denyContainment()
+  denyContainment(decisionId) {
+    activeSource().denyContainment(decisionId)
   },
   askObserver(prompt: string) {
     activeSource().askObserver(prompt)

@@ -35,7 +35,7 @@ export function measureTelemetry(
   let monitored = 0
   let online = 0
   for (const node of nodes) {
-    if (node.cluster === 'core') continue
+    if (node.cluster === 'core' || (mode === 'LIVE' && node.ambient)) continue
     monitored += 1
     if (node.status === 'isolated') continue
     if (mode === 'SIMULATED' ? node.heartbeat_age_sec * 1000 < ONLINE_WINDOW_MS : recentSources.has(node.source_id)) {

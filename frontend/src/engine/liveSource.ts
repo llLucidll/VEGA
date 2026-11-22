@@ -12,6 +12,7 @@ import type {
 import { type BackendStateSnapshot, useVegaStore } from '../store/useVegaStore'
 import type { VegaDataSource } from './dataSource'
 import { particleBus } from './particleBus'
+import { isWardenApprovalExpired, isWardenApprovalPending } from './wardenApproval'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 const STREAM_RETRY_MS = 2_000
@@ -21,6 +22,7 @@ export class LiveStreamSource implements VegaDataSource {
   private eventSource: EventSource | null = null
   private reconnectTimerId: number | null = null
   private ttlTimerId: number | null = null
+  private wardenRequestController: AbortController | null = null
 
   start(_scenarioId?: ScenarioId) {
     this.stop()
@@ -53,7 +55,11 @@ export class LiveStreamSource implements VegaDataSource {
       window.clearInterval(this.ttlTimerId)
       this.ttlTimerId = null
     }
-    useVegaStore.getState().setLiveStatus('disconnected')
+    this.wardenRequestController?.abort()
+    this.wardenRequestController = null
+    const store = useVegaStore.getState()
+    store.setWardenRequest(null)
+    store.setLiveStatus('disconnected')
   }
 
   reset(_scenarioId?: ScenarioId) {
@@ -116,29 +122,76 @@ export class LiveStreamSource implements VegaDataSource {
       state.setStage('blackout')
       return
     }
-    if (state.stage === 'blackout') {
-      if (state.wardenDecision?.execution_status === 'awaiting_authorization') {
-        this.authorizeContainment()
-        return
+    if (state.stage === 'blackout') state.setObserverOpen(true)
+  }
+
+  authorizeContainment(decisionId: string) {
+    void this.submitWardenRequest(decisionId, 'authorize')
+  }
+
+  denyContainment(decisionId: string) {
+    void this.submitWardenRequest(decisionId, 'deny')
+  }
+
+  private async submitWardenRequest(decisionId: string, action: 'authorize' | 'deny') {
+    const state = useVegaStore.getState()
+    const decision = state.wardenDecision
+    if (
+      state.dataMode !== 'LIVE' ||
+      state.liveStatus !== 'connected' ||
+      this.wardenRequestController ||
+      !isWardenApprovalPending(decision) ||
+      decision.decision_id !== decisionId ||
+      isWardenApprovalExpired(decision, Date.now())
+    ) return
+
+    const controller = new AbortController()
+    this.wardenRequestController = controller
+    state.setWardenRequest({ decisionId, status: 'pending' })
+    try {
+      const response = await fetch(`${API_BASE}/api/warden/${encodeURIComponent(decisionId)}/${action}`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        const detail = typeof body?.detail === 'string' ? body.detail : `HTTP ${response.status}`
+        throw new Error(detail)
       }
-      state.setObserverOpen(true)
+
+      const updated = (await response.json()) as WardenDecision
+      if (updated?.decision_id !== decisionId) throw new Error('Unexpected decision in server response')
+      // Never let the POST response replace a decision already refreshed by SSE.
+      if (!controller.signal.aborted && useVegaStore.getState().wardenDecision === decision) {
+        this.applyWardenDecision(updated)
+      }
+    } catch (error) {
+      const current = useVegaStore.getState()
+      if (!controller.signal.aborted && current.wardenDecision?.decision_id === decisionId) {
+        current.setWardenRequest({
+          decisionId,
+          status: 'error',
+          message: `Warden could not confirm the request: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+    } finally {
+      if (this.wardenRequestController === controller) {
+        this.wardenRequestController = null
+        const current = useVegaStore.getState()
+        if (current.wardenRequest?.status === 'pending') current.setWardenRequest(null)
+      }
     }
   }
 
-  authorizeContainment() {
-    const decision = useVegaStore.getState().wardenDecision
-    if (!decision) return
-    void fetch(`${API_BASE}/api/warden/${encodeURIComponent(decision.decision_id)}/authorize`, {
-      method: 'POST',
-    })
-  }
-
-  denyContainment() {
-    const decision = useVegaStore.getState().wardenDecision
-    if (!decision) return
-    void fetch(`${API_BASE}/api/warden/${encodeURIComponent(decision.decision_id)}/deny`, {
-      method: 'POST',
-    })
+  private applyWardenDecision(decision: WardenDecision) {
+    const state = useVegaStore.getState()
+    state.setWardenDecision(decision)
+    // The backend snapshot owns node status. Council suspects are not necessarily Warden targets.
+    if (decision.execution_status === 'contained' || decision.execution_status === 'contained_dry_run') {
+      state.setThreatMode('CONTAINED')
+    } else if (decision.execution_status === 'awaiting_authorization') {
+      state.setThreatMode('SEV1_ESCALATION')
+    }
   }
 
   askObserver(prompt: string) {
@@ -189,12 +242,11 @@ export class LiveStreamSource implements VegaDataSource {
     es.onerror = () => {
       if (this.eventSource !== es) return
       useVegaStore.getState().setLiveStatus('disconnected')
-      // EventSource handles transient disconnects. Some HTTP errors close it permanently.
-      if (es.readyState !== EventSource.CLOSED) return
+      es.close()
+      if (this.reconnectTimerId !== null) return
       this.reconnectTimerId = window.setTimeout(() => {
         this.reconnectTimerId = null
         if (this.eventSource !== es) return
-        es.close()
         useVegaStore.getState().setLiveStatus('connecting')
         this.connectSse()
       }, STREAM_RETRY_MS)
@@ -229,7 +281,9 @@ export class LiveStreamSource implements VegaDataSource {
       if (store.nodes.find((n) => n.source_id === finding.source_id)?.status === 'healthy') {
         store.updateNodeStatus(finding.source_id, 'elevated')
       }
-      const edge = store.edges.find((ed) => ed.from === finding.source_id)
+      const edge =
+        store.edges.find((ed) => ed.from === finding.source_id && ed.to === 'vega-core') ??
+        store.edges.find((ed) => ed.from === finding.source_id)
       if (edge) store.markEdgeAnomalous(edge.id, true)
       particleBus.spawn(finding.source_id, 'vega-core', finding.channel, true)
     })
@@ -256,27 +310,9 @@ export class LiveStreamSource implements VegaDataSource {
     })
 
     es.addEventListener('warden_decision', (e) => {
+      if (this.eventSource !== es) return
       const decision = JSON.parse((e as MessageEvent<string>).data) as WardenDecision
-      const store = useVegaStore.getState()
-      store.setWardenDecision(decision)
-      if (decision.execution_status === 'contained_dry_run') {
-        store.setThreatMode('CONTAINED')
-        const targetIds = new Set<string>(store.councilSignal?.source_ids ?? [])
-        for (const node of store.nodes) {
-          if (
-            node.source_id !== 'vega-core' &&
-            (decision.trusted_target_ref.includes(node.source_id) ||
-              decision.scope.includes(node.source_id))
-          ) {
-            targetIds.add(node.source_id)
-          }
-        }
-        for (const sid of targetIds) {
-          store.updateNodeStatus(sid, 'isolated')
-        }
-      } else if (decision.execution_status === 'awaiting_authorization') {
-        store.setThreatMode('SEV1_ESCALATION')
-      }
+      this.applyWardenDecision(decision)
     })
   }
 }

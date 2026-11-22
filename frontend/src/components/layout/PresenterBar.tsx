@@ -37,7 +37,7 @@ export function PresenterBar() {
             ? 'Next: Blackout'
             : 'Next: Chronos'
           : stage === 'blackout'
-            ? wardenDecision?.execution_status === 'awaiting_authorization'
+            ? dataMode === 'SIMULATED' && wardenDecision?.execution_status === 'awaiting_authorization'
               ? 'Next: Authorize'
               : 'Next: Observer'
             : 'Next Cue'

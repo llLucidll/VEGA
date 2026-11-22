@@ -11,7 +11,7 @@ export interface VegaDataSource {
   injectAnomaly(): void
   stepNextEvent(): void
   advanceCue(): void
-  authorizeContainment(): void
-  denyContainment(): void
+  authorizeContainment(decisionId: string): void
+  denyContainment(decisionId: string): void
   askObserver(prompt: string): void
 }

@@ -138,6 +138,24 @@ export interface WardenAuditEntry {
   status: 'info' | 'ok' | 'warn' | 'critical'
 }
 
+export type WardenActionType =
+  | 'quarantine_host'
+  | 'revoke_credentials'
+  | 'quarantine_and_revoke'
+  | 'escalate_human'
+
+export interface JevDecisionSummary {
+  available: boolean
+  action_choice: WardenActionType
+  confidence: number
+  probabilities: Record<string, number>
+  credential_compromise: number
+  host_compromise: number
+  safe_to_automate: number
+  model: string
+  error?: string | null
+}
+
 export interface WardenDecision {
   decision_id: string
   incident_id: string
@@ -148,11 +166,13 @@ export interface WardenDecision {
   policy_checks: PolicyCheck[]
   requires_human_approval: boolean
   approval_status: 'pending' | 'approved' | 'denied'
-  approval_ref?: string
+  approval_ref?: string | null
   expires_at: string
-  /** Always true in hackathon demo; no real endpoint controls are mutated. */
   dry_run: boolean
-  execution_status: 'awaiting_authorization' | 'executing' | 'contained_dry_run' | 'denied'
+  execution_status: 'awaiting_authorization' | 'executing' | 'contained' | 'contained_dry_run' | 'denied'
+  action_type?: WardenActionType | null
+  target_hosts?: string[]
+  jev_decision?: JevDecisionSummary | null
   audit_log: WardenAuditEntry[]
 }
 
@@ -164,6 +184,7 @@ export interface MonitoredNode {
   status: NodeStatus
   heartbeat_age_sec: number
   identity_sealed: boolean
+  ambient?: boolean
 }
 
 export interface NetworkEdge {

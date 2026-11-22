@@ -202,17 +202,17 @@ class MockScenarioSource implements VegaDataSource {
 
     if (state.stage === 'blackout') {
       if (state.wardenDecision?.execution_status === 'awaiting_authorization') {
-        this.authorizeContainment()
+        this.authorizeContainment(state.wardenDecision.decision_id)
         return
       }
       state.setObserverOpen(true)
     }
   }
 
-  authorizeContainment() {
+  authorizeContainment(decisionId: string) {
     const state = useVegaStore.getState()
     const sc = SCENARIOS[state.scenarioId]
-    if (!state.wardenDecision || state.wardenDecision.execution_status === 'contained_dry_run') {
+    if (state.wardenDecision?.decision_id !== decisionId || state.wardenDecision.execution_status !== 'awaiting_authorization') {
       return
     }
 
@@ -242,9 +242,9 @@ class MockScenarioSource implements VegaDataSource {
     })
   }
 
-  denyContainment() {
+  denyContainment(decisionId: string) {
     const state = useVegaStore.getState()
-    if (!state.wardenDecision) return
+    if (state.wardenDecision?.decision_id !== decisionId || state.wardenDecision.execution_status !== 'awaiting_authorization') return
     this.clearContainmentTimers()
     state.updateWardenExecution({
       approval_status: 'denied',

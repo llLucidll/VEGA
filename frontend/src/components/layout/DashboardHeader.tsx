@@ -14,7 +14,7 @@ export function DashboardHeader({ onRecenter, onHeightChange }: DashboardHeaderP
   const headerStack = useRef<HTMLDivElement>(null)
   const stage = useVegaStore((s) => s.stage)
   const wardenActive = useVegaEyeState() === 'warden'
-  const showTicker = stage === 'panopticon' || stage === 'ghost_protocol'
+  const showTicker = stage === 'panopticon' || stage === 'ghost_protocol' || stage === 'council'
 
   useEffect(() => {
     const stack = headerStack.current
