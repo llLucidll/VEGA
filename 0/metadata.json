@@ -1,0 +1,78 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M80FYDCTHJ12XN33VYS2VGF9",
+  "session_id": "01a1fff9-6bc7-73ee-bd3a-533fb2ea353e",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-22T02:04:15.949702164Z",
+  "branch": "warden-scaffold",
+  "checkpoints_count": 1,
+  "save_step_count": 2,
+  "files_touched": [
+    "backend/.env.example",
+    "backend/README.md",
+    "backend/pyproject.toml",
+    "backend/scripts/auth0_device_login.py",
+    "backend/scripts/auth0_warden_token.py",
+    "backend/scripts/setup_multipass_telemetry.sh",
+    "backend/tests/conftest.py",
+    "backend/tests/test_redis_integration.py",
+    "backend/tests/test_stream_store.py",
+    "backend/tests/test_swarm.py",
+    "backend/tests/test_vault.py",
+    "backend/tests/test_vm_collector.py",
+    "backend/uv.lock",
+    "backend/vega/api.py",
+    "backend/vega/config.py",
+    "backend/vega/models.py",
+    "backend/vega/producers/exfil_sink.py",
+    "backend/vega/producers/vm_collector.py",
+    "backend/vega/state.py",
+    "backend/vega/streams/store.py",
+    "backend/vega/swarm/coordinator.py",
+    "backend/vega/swarm/correlator.py",
+    "backend/vega/swarm/reasoner.py",
+    "backend/vega/swarm/scouts.py",
+    "backend/vega/vault/README.md",
+    "backend/vega/vault/__init__.py",
+    "backend/vega/vault/service.py",
+    "frontend/src/App.tsx",
+    "frontend/src/contracts/vega.ts",
+    "frontend/src/engine/liveSource.ts",
+    "frontend/src/store/useVegaStore.ts"
+  ],
+  "agent": "Pi",
+  "model": "gpt-6.2-sol",
+  "turn_id": "f72e3e63b87e",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 1747,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 154752,
+    "output_tokens": 94,
+    "api_call_count": 1
+  },
+  "session_token_usage": {
+    "input_tokens": 1161496,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 31393408,
+    "output_tokens": 134606,
+    "api_call_count": 262
+  },
+  "redaction": {
+    "replacements": 1,
+    "layers": {
+      "betterleaks": 1,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 32
+  }
+}
