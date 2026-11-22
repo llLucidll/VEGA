@@ -1,0 +1,5 @@
+cajn you remove the pause on the top right of the header, lets keep the pause pipelone only in shift + d dev menu
+
+---
+
+ok push that to rune branch as well
