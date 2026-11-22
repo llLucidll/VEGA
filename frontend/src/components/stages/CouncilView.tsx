@@ -31,9 +31,22 @@ export function CouncilView() {
                 <VegaEye state={eyeState} className="h-auto w-7 shrink-0" />
                 03 / ORACLE — THE COUNCIL
               </div>
-              <h1 className="mt-1 text-xl font-bold text-white">
-                Autonomous Multi-Agent Deliberation
+              <h1 className="mt-1 text-lg font-medium text-slate-100">
+                Autonomous Multi-Agent Tribunal
               </h1>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {councilSignal ? (
+                  <>
+                    Judging{' '}
+                    <span className="text-slate-200">
+                      {councilSignal.source_ids.slice(0, 4).join(', ')}
+                      {councilSignal.source_ids.length > 4 && ` +${councilSignal.source_ids.length - 4}`}
+                    </span>
+                  </>
+                ) : (
+                  'Awaiting a SEV1 from Sentinel'
+                )}
+              </p>
             </div>
 
             <div className="flex items-center gap-2.5">
