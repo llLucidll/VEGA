@@ -1,9 +1,10 @@
-import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, CheckCircle2, Eye, Shield, XCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BrainCircuit, Eye, Shield } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { vegaSource } from '../../engine/sourceManager'
 import { useVegaEyeState } from '../../store/useVegaEyeState'
 import { useVegaStore } from '../../store/useVegaStore'
 import { VegaEye } from '../layout/VegaEye'
+import { OracleAssessmentPanel } from './OracleAssessmentPanel'
 
 export function CouncilView() {
   const eyeState = useVegaEyeState()
@@ -204,93 +205,7 @@ export function CouncilView() {
             </div>
 
             {/* Right: Oracle Contextual Reasoning */}
-            <div className="vega-panel rounded-2xl p-5 lg:col-span-7">
-              <div className="flex items-center justify-between">
-                <span className="font-mono-tabular text-[11px] font-semibold tracking-wider text-purple-400 uppercase">
-                  Oracle Contextual Assessment
-                </span>
-                {oracleAssessment && (
-                  <span className="font-mono-tabular text-[10px] text-slate-400">
-                    {oracleAssessment.incident_id} • {oracleAssessment.model_version}
-                  </span>
-                )}
-              </div>
-
-              {oracleAssessment ? (
-                <div className="mt-3 space-y-4">
-                  <p className="text-xs leading-relaxed text-slate-200">
-                    {oracleAssessment.assessment}
-                  </p>
-
-                  {/* Competing Explanations */}
-                  <div>
-                    <div className="mb-1.5 font-mono-tabular text-[10px] text-slate-400 uppercase">
-                      Competing Hypotheses Tested
-                    </div>
-                    <div className="space-y-2">
-                      {oracleAssessment.competing_explanations.map((exp) => (
-                        <div
-                          key={exp.hypothesis}
-                          className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-medium text-slate-200">
-                              {exp.hypothesis}
-                            </span>
-                            <span className="inline-flex items-center gap-1 font-mono-tabular text-[10px] text-amber-300 uppercase">
-                              <XCircle className="h-3 w-3" />
-                              {exp.status.replace('_', ' ')}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-[11px] text-slate-400">{exp.reason}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Cited Policies */}
-                  <div>
-                    <div className="mb-1.5 font-mono-tabular text-[10px] text-slate-400 uppercase">
-                      Cited Organizational Policies
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {oracleAssessment.cited_policies.map((pol) => (
-                        <div
-                          key={pol.policy_id}
-                          className="rounded-xl border border-purple-400/25 bg-purple-950/20 p-2.5"
-                        >
-                          <div className="flex items-center gap-1.5 font-mono-tabular text-[11px] font-semibold text-purple-200">
-                            <BookOpen className="h-3 w-3" />
-                            {pol.policy_id} ({pol.version})
-                          </div>
-                          <div className="mt-0.5 text-xs font-medium text-slate-200">
-                            {pol.title}
-                          </div>
-                          <p className="mt-1 text-[11px] text-slate-400">{pol.excerpt}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Recommended Scoped Action */}
-                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-400/30 bg-emerald-950/20 p-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                    <div className="text-xs">
-                      <div className="font-semibold text-emerald-200">
-                        Recommended Action: {oracleAssessment.recommended_action}
-                      </div>
-                      <div className="mt-0.5 text-slate-300">
-                        Scope: {oracleAssessment.recommended_scope}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-slate-400">
-                  Oracle activates only after Sentinel confirms a SEV1 incident.
-                </p>
-              )}
-            </div>
+            <OracleAssessmentPanel />
           </div>
         </motion.section>
       )}
