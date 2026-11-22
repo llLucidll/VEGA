@@ -111,25 +111,26 @@ class TypeSafeJevEvaluator:
                     questions={
                         "containment_action": Choice(
                             instructions=(
-                                "Select the single most appropriate containment action for the flagged host(s) "
+                                "Select the single mutually exclusive containment action for the flagged host(s) "
                                 "based on the Oracle assessment, scout findings, and telemetry events."
                             ),
                             criteria={
                                 "quarantine_host": (
-                                    "Isolate the host network egress because the host is staging archives, "
-                                    "running malicious commands, or exfiltrating data over the network."
+                                    "Isolate ONLY host network egress when host staging or exfiltration occurred "
+                                    "WITHOUT any Vault access, Auth0 token abuse, or secret/key file reads."
                                 ),
                                 "revoke_credentials": (
-                                    "Revoke/block the user's Auth0 and Vault credentials because tokens, "
-                                    "secrets, or Vault access were abused without broader host compromise."
+                                    "Revoke ONLY Auth0 and Vault credentials when tokens, secrets, or Vault access "
+                                    "were abused WITHOUT host archive staging or outbound network exfiltration."
                                 ),
                                 "quarantine_and_revoke": (
-                                    "Both isolate the host network egress AND revoke/block Auth0/Vault "
-                                    "credentials because both secret/credential abuse and host exfiltration occurred."
+                                    "Isolate host network egress AND revoke Auth0/Vault credentials when BOTH "
+                                    "secret/Vault/credential access AND host staging or outbound exfiltration occurred "
+                                    "(or when Oracle recommends isolating and revoking sessions)."
                                 ),
                                 "escalate_human": (
-                                    "Do not automate containment; evidence is ambiguous, incomplete, "
-                                    "involves a protected host, or requires human operator judgment."
+                                    "Escalate to a human operator when evidence is ambiguous, incomplete, "
+                                    "involves a protected host, or Oracle did not clearly recommend containment."
                                 ),
                             },
                         ),
@@ -278,6 +279,7 @@ class JevWardenService:
             }
             for e in events
             if e.source_id in target_set
+            and not ("top_processes" in e.payload and "cmd" not in e.payload)
         ][-20:]
         return {
             "target_hosts": target_hosts,
