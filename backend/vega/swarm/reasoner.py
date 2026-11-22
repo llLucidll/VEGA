@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any, Protocol, TypeVar
@@ -28,9 +29,10 @@ class StructuredReasoner(Protocol):
 class GeminiStructuredReasoner:
     """Async Gemini API reasoner using google-genai structured JSON outputs."""
 
-    def __init__(self, *, api_key: str, model: str) -> None:
+    def __init__(self, *, api_key: str, model: str, timeout_seconds: float = 15.0) -> None:
         self.mode_name = f"gemini:{model}"
         self._model = model
+        self._timeout_seconds = timeout_seconds
         self._client = genai.Client(api_key=api_key)
 
     async def generate(
@@ -40,15 +42,18 @@ class GeminiStructuredReasoner:
         prompt: str,
         response_schema: type[T],
     ) -> T:
-        response = await self._client.aio.models.generate_content(
-            model=self._model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=response_schema,
-                temperature=0.1,
+        response = await asyncio.wait_for(
+            self._client.aio.models.generate_content(
+                model=self._model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    response_mime_type="application/json",
+                    response_schema=response_schema,
+                    temperature=0.1,
+                ),
             ),
+            timeout=self._timeout_seconds,
         )
         parsed = getattr(response, "parsed", None)
         if isinstance(parsed, response_schema):
@@ -135,8 +140,9 @@ class HeuristicStructuredReasoner:
                 for ev in events
                 if self._matches(
                     ev.get("payload", {}),
-                    r"(198\.51\.100\.|egress-drop|UNTRUSTED|rejected)",
+                    r"(198\.51\.100\.|egress-drop|UNTRUSTED|rejected|exfil-sink|:8443)",
                 )
+                or ev.get("payload", {}).get("unapproved_egress") is True
                 or (
                     isinstance(ev.get("payload", {}).get("bytes_out"), (int, float))
                     and ev["payload"]["bytes_out"] >= 25_000_000

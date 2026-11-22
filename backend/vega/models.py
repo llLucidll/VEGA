@@ -11,7 +11,7 @@ ConfidenceLevel = Literal["low", "medium", "high"]
 SeverityLevel = Literal["LOW", "MEDIUM", "HIGH", "SEV1"]
 NodeStatus = Literal["healthy", "elevated", "compromised", "isolated"]
 NodeCluster = Literal["core", "eng", "ops", "fin"]
-WindowStatus = Literal["collecting", "scouting", "correlating", "clean", "flagged"]
+WindowStatus = Literal["collecting", "scouting", "correlating", "clean", "flagged", "failed"]
 
 
 class EventIn(BaseModel):
