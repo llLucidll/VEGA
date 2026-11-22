@@ -6,9 +6,10 @@ import { useVegaStore } from '../../store/useVegaStore'
 import { VegaEye } from '../layout/VegaEye'
 import { OracleAssessmentPanel } from './OracleAssessmentPanel'
 
-export function CouncilView() {
+export function CouncilView({ headerHeight }: { headerHeight: number }) {
   const eyeState = useVegaEyeState()
   const stage = useVegaStore((s) => s.stage)
+  const dataMode = useVegaStore((s) => s.dataMode)
   const councilSignal = useVegaStore((s) => s.councilSignal)
   const selectEvent = useVegaStore((s) => s.selectEvent)
   const setChronosExpanded = useVegaStore((s) => s.setChronosExpanded)
@@ -22,10 +23,11 @@ export function CouncilView() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#050811]/88 px-6 pt-32 pb-20 backdrop-blur-md"
+          style={{ paddingTop: `max(8rem, ${headerHeight + 16}px)` }}
+          className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#050811]/88 px-4 pb-20 backdrop-blur-md sm:px-6"
         >
           {/* Header */}
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 font-mono-tabular text-[11px] tracking-[0.22em] text-purple-400 uppercase">
                 <VegaEye state={eyeState} className="h-auto w-7 shrink-0" />
@@ -64,7 +66,7 @@ export function CouncilView() {
                 onClick={() => vegaSource.jumpToStage('blackout')}
                 className="inline-flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/15 px-4 py-2 text-xs font-medium tracking-wider text-red-200 uppercase transition hover:bg-red-500/25"
               >
-                <span>Escalate to Warden Gate</span>
+                <span>{dataMode === 'LIVE' ? 'View Warden Gate' : 'Escalate to Warden Gate'}</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

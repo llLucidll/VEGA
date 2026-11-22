@@ -3,6 +3,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref
 import vegaCoreBlue from '../../assets/vega-core-idle.png'
 import vegaCoreGreen from '../../assets/vega-core-alert.png'
 import vegaCorePurple from '../../assets/vega-core-council.png'
+import vegaCoreRed from '../../assets/vega-core-warden.png'
 import type { MonitoredNode } from '../../contracts/vega'
 import { drawTopologyDots, type TopologyHover } from '../../engine/drawTopologyDots'
 import { particleBus } from '../../engine/particleBus'
@@ -20,6 +21,13 @@ const DEFAULT_ZOOM = 100
 const ZOOM_STEP = 10
 const ZOOM_BUTTON_CLASS = 'grid h-10 w-10 place-items-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-300 disabled:pointer-events-none disabled:opacity-35'
 
+const CORE_ARTWORK = {
+  idle: vegaCoreGreen,
+  alert: vegaCoreBlue,
+  investigating: vegaCorePurple,
+  warden: vegaCoreRed,
+}
+
 export interface PanopticonHandle {
   recenter: () => void
 }
@@ -30,11 +38,15 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
   const nodeElRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const pan = useRef({ x: 0, y: 0 })
   const zoomRef = useRef(DEFAULT_ZOOM)
+  const orbitSeconds = useRef(0)
   const positionsRef = useRef(new Map<string, Point>())
   const layoutIds = useRef<string[]>([])
   const manualLayout = useRef(false)
 
   const eyeState = useVegaEyeState()
+  const wardenCore = eyeState === 'warden'
+  const dataMode = useVegaStore((s) => s.dataMode)
+  const wardenDecision = useVegaStore((s) => s.wardenDecision)
   const nodes = useVegaStore((s) => s.nodes)
   const stage = useVegaStore((s) => s.stage)
   const selectedNodeId = useVegaStore((s) => s.selectedNodeId)
@@ -342,7 +354,8 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         ? 0
         : hover.strength + ((targetPoint ? 1 : 0) - hover.strength) * hoverEase
       hover.motion += (motion - hover.motion) * hoverEase
-      drawTopologyDots(ctx, size.width, size.height, origin, camera.zoom, hover)
+      if (!reducedMotion.matches) orbitSeconds.current += Math.max(0, dt)
+      drawTopologyDots(ctx, size.width, size.height, origin, camera.zoom, hover, orbitSeconds.current)
 
       // Draw edges
       for (const edge of state.edges) {
@@ -353,7 +366,9 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         const s2 = toScreen(p2.x, p2.y)
 
         const fromNode = state.nodes.find((n) => n.source_id === edge.from)
-        const isIsolated = fromNode?.status === 'isolated'
+        const toNode = state.nodes.find((n) => n.source_id === edge.to)
+        const isIsolated = fromNode?.status === 'isolated' || toNode?.status === 'isolated'
+        const isPeerLink = edge.from !== 'vega-core' && edge.to !== 'vega-core'
 
         ctx.beginPath()
         ctx.moveTo(s1.sx, s1.sy)
@@ -366,6 +381,9 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         } else if (edge.anomalous) {
           ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)'
           ctx.lineWidth = 2
+        } else if (isPeerLink) {
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.30)'
+          ctx.lineWidth = 1.3
         } else {
           ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)'
           ctx.lineWidth = 1.1
@@ -467,6 +485,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
     <div
       ref={containerRef}
       role="region"
+      inert={stage === 'blackout'}
       aria-label="Topology canvas"
       aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home - = 0"
       tabIndex={0}
@@ -552,30 +571,28 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
               {isCore && (
                 <>
                   <img
-                    src={
-                      eyeState === 'investigating'
-                        ? vegaCorePurple
-                        : eyeState === 'alert'
-                          ? vegaCoreBlue
-                          : vegaCoreGreen
-                    }
+                    src={CORE_ARTWORK[eyeState]}
                     alt=""
                     aria-hidden="true"
                     draggable={false}
-                    className="pointer-events-none absolute inset-0 size-full scale-105 rounded-full object-cover opacity-65 select-none"
+                    className={`vega-core-spin pointer-events-none absolute inset-0 size-full scale-105 rounded-full object-cover select-none ${wardenCore ? 'opacity-90' : 'opacity-65'}`}
                   />
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(5,8,17,0.72)_0%,rgba(5,8,17,0.48)_58%,rgba(5,8,17,0.18)_100%)]"
-                  />
+                  {!wardenCore && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(5,8,17,0.72)_0%,rgba(5,8,17,0.48)_58%,rgba(5,8,17,0.18)_100%)]"
+                    />
+                  )}
                 </>
               )}
 
               {isCore ? (
-                <VegaEye
-                  state={eyeState}
-                  className="relative z-10 h-auto w-28 shrink-0 drop-shadow-[0_2px_8px_rgba(5,8,17,0.95)]"
-                />
+                !wardenCore && (
+                  <VegaEye
+                    state={eyeState}
+                    className="relative z-10 h-auto w-28 shrink-0 drop-shadow-[0_2px_8px_rgba(5,8,17,0.95)]"
+                  />
+                )
               ) : (
                 <div className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-black/40">
                   {isIsolated ? (
@@ -588,7 +605,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
                 </div>
               )}
 
-              <div className={`leading-tight ${isCore ? 'relative z-10 drop-shadow-[0_1px_4px_rgba(5,8,17,0.95)]' : ''}`}>
+              <div className={`leading-tight ${isCore ? `${wardenCore ? 'absolute bottom-4' : 'relative'} z-10 drop-shadow-[0_1px_4px_rgba(5,8,17,0.95)]` : ''}`}>
                 <div className={`flex items-center gap-1.5 ${isCore ? 'justify-center' : ''}`}>
                   <span
                     className={`text-slate-100 ${isCore ? 'font-display text-sm tracking-[0.06em] lowercase' : 'font-mono-tabular text-[11px] font-medium'}`}
@@ -607,7 +624,11 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
                 </div>
                 {!isCore && (
                   <div className="text-[10px] text-slate-400">
-                    {isIsolated ? 'ISOLATED (DRY-RUN)' : node.role}
+                    {isIsolated
+                      ? dataMode === 'LIVE' && wardenDecision?.dry_run !== true
+                        ? 'ISOLATED'
+                        : 'ISOLATED (DRY-RUN)'
+                      : node.role}
                   </div>
                 )}
               </div>

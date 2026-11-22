@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Orbitron';
+  src: url('./assets/fonts/orbitron-900-latin.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --vega-bg: #050811;
@@ -162,6 +170,15 @@
   box-shadow: 0 0 30px color-mix(in srgb, var(--core-tint) 23%, transparent);
 }
 
+.vega-core-spin {
+  animation: vega-core-spin-ccw 28s linear infinite;
+}
+
+@keyframes vega-core-spin-ccw {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
 .vega-eye-scan {
   animation: vega-eye-scan 4s ease-in-out infinite;
 }
@@ -172,8 +189,49 @@
   55%, 72% { transform: translateX(3.4px); }
 }
 
+.vega-blackout {
+  background: linear-gradient(180deg, rgb(18 5 12 / .16), rgb(9 4 11 / .22) 60%, rgb(9 4 11 / .56));
+}
+
+.vega-warden-heading {
+  max-inline-size: min(100%, 13em);
+  font-family: 'Orbitron', var(--font-sans);
+  font-size: clamp(1.625rem, 5.6vw, 4rem);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: 0.025em;
+}
+
+.vega-warden-hero::before {
+  content: '';
+  position: absolute;
+  inset: -1.75rem 0 -2.5rem;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 46% 34%, rgb(248 113 113 / .16), transparent 63%),
+    radial-gradient(ellipse at 50% 62%, rgb(13 6 13 / .44), transparent 72%);
+  backdrop-filter: blur(7px) saturate(135%) brightness(.76);
+  mask-image: radial-gradient(ellipse closest-side, #000 30%, rgb(0 0 0 / .75) 62%, transparent);
+}
+
+.vega-warden-pupil-scan {
+  transform-box: view-box;
+  transform-origin: 18px 12px;
+  transform: scale(1.05, 1.25);
+  animation: vega-warden-scan 6s cubic-bezier(.4, 0, .22, 1) infinite;
+}
+
+/* The slit just overshoots the curved lids, so the clip holds both tips against the eye. */
+@keyframes vega-warden-scan {
+  0%, 45.5%, 100% { transform: translateX(0) scale(1.05, 1.25); }
+  15%, 36% { transform: translateX(-8px) scale(.72, 1.06); }
+  55%, 80% { transform: translateX(6.5px) scale(.72, 1.1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .vega-eye-scan {
+  .vega-core-spin,
+  .vega-eye-scan,
+  .vega-warden-pupil-scan {
     animation: none;
   }
 
@@ -211,6 +269,14 @@
 
   .vega-ticker {
     background: #131a29;
+    backdrop-filter: none;
+  }
+
+  .vega-blackout {
+    background: #09060c;
+  }
+
+  .vega-warden-hero::before {
     backdrop-filter: none;
   }
 

@@ -41,6 +41,10 @@ export interface BackendStateSnapshot {
 
 export type LiveConnectionStatus = 'disconnected' | 'connecting' | 'connected'
 
+type WardenRequest =
+  | { decisionId: string; status: 'pending' }
+  | { decisionId: string; status: 'error'; message: string }
+
 interface VegaState {
   dataMode: 'SIMULATED' | 'LIVE'
   liveStatus: LiveConnectionStatus
@@ -61,6 +65,7 @@ interface VegaState {
   councilSignal: CouncilSignal | null
   oracleAssessment: OracleAssessment | null
   wardenDecision: WardenDecision | null
+  wardenRequest: WardenRequest | null
 
   selectedNodeId: string | null
   selectedEventId: string | null
@@ -89,6 +94,7 @@ interface VegaState {
   setCouncilSignal: (signal: CouncilSignal | null) => void
   setOracleAssessment: (assessment: OracleAssessment | null) => void
   setWardenDecision: (decision: WardenDecision | null) => void
+  setWardenRequest: (request: WardenRequest | null) => void
   updateNodeStatus: (sourceId: string, status: NodeStatus) => void
   markEdgeAnomalous: (edgeId: string, anomalous: boolean) => void
   updateWindowStatus: (windowId: string, status: Window['status']) => void
@@ -128,6 +134,7 @@ export const useVegaStore = create<VegaState>((set) => ({
   councilSignal: null,
   oracleAssessment: null,
   wardenDecision: null,
+  wardenRequest: null,
 
   selectedNodeId: null,
   selectedEventId: null,
@@ -325,6 +332,7 @@ export const useVegaStore = create<VegaState>((set) => ({
   setCouncilSignal: (councilSignal) => set({ councilSignal }),
   setOracleAssessment: (oracleAssessment) => set({ oracleAssessment }),
   setWardenDecision: (wardenDecision) => set({ wardenDecision }),
+  setWardenRequest: (wardenRequest) => set({ wardenRequest }),
 
   updateNodeStatus: (sourceId, status) =>
     set((state) => ({

@@ -69,12 +69,27 @@ def build_request(
 
 
 class OracleBridge:
-    def __init__(self, runtime, *, mock: bool | None = None, caller=None, timeout_s: float | None = None) -> None:
+    def __init__(
+        self,
+        runtime,
+        *,
+        mock: bool | None = None,
+        caller=None,
+        timeout_s: float | None = None,
+        on_assessment=None,
+        stage_delay_s: float | None = None,
+    ) -> None:
         self.runtime = runtime
         self.mock = _flag("ORACLE_BRIDGE_MOCK") if mock is None else mock
         self.timeout_s = timeout_s or float(os.getenv("ORACLE_BRIDGE_TIMEOUT", "90"))
         self._caller = caller
         self._label = "custom" if caller else None
+        self._on_assessment = on_assessment
+        self.stage_delay_s = (
+            max(0.0, float(os.getenv("VEGA_STAGE_DELAY_SECONDS", "0")))
+            if stage_delay_s is None
+            else max(0.0, stage_delay_s)
+        )
         self._tasks: set[asyncio.Task] = set()
 
     def _get_caller(self):
@@ -100,6 +115,11 @@ class OracleBridge:
         if signal is None or signal.severity != "SEV1":
             return None
         rt = self.runtime
+        if self.stage_delay_s > 0:
+            await asyncio.sleep(self.stage_delay_s)
+            if rt.council_signal != signal:
+                log.info("Skipping Oracle for %s: signal was reset or superseded during stage delay", signal.signal_id)
+                return None
         events = list(rt.preserved_evidence.values()) + list(rt.events)
         try:
             assessment = await self.assess(signal, findings, events)
@@ -113,6 +133,11 @@ class OracleBridge:
             return None
         rt.oracle_assessment = assessment
         await rt.publish("oracle_assessment", assessment)
+        if self._on_assessment is not None and rt.council_signal == signal:
+            try:
+                await self._on_assessment(assessment, signal, list(findings), events)
+            except Exception:  # noqa: BLE001 - never break Oracle on downstream Warden error
+                log.exception("Warden handler failed for %s", signal.signal_id)
         return assessment
 
     def schedule(self, signal: CouncilSignal | None, findings: Iterable[ScoutFinding]) -> asyncio.Task | None:

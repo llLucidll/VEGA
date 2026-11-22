@@ -40,7 +40,7 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-d',
     pseudonym: 'subj-074',
-    role: 'Backend Dev Laptop',
+    role: 'GitHub CI Runner (us-east)',
     cluster: 'eng',
     status: 'healthy',
     heartbeat_age_sec: 4,
@@ -49,7 +49,7 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-e',
     pseudonym: 'subj-211',
-    role: 'Security Ops Console',
+    role: 'AWS EC2 Prod API (i-09f4a)',
     cluster: 'ops',
     status: 'healthy',
     heartbeat_age_sec: 1,
@@ -58,8 +58,8 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-f',
     pseudonym: 'subj-305',
-    role: 'Treasury Workstation',
-    cluster: 'fin',
+    role: 'Foundry Pipeline Worker',
+    cluster: 'eng',
     status: 'healthy',
     heartbeat_age_sec: 5,
     identity_sealed: true,
@@ -67,8 +67,8 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-g',
     pseudonym: 'subj-163',
-    role: 'Payroll API Host',
-    cluster: 'fin',
+    role: 'AWS EKS Auth Gateway',
+    cluster: 'ops',
     status: 'healthy',
     heartbeat_age_sec: 3,
     identity_sealed: true,
@@ -76,7 +76,7 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-h',
     pseudonym: 'subj-088',
-    role: 'ML Training Node',
+    role: 'ML Inference Cluster (GPU)',
     cluster: 'eng',
     status: 'healthy',
     heartbeat_age_sec: 2,
@@ -85,7 +85,7 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-i',
     pseudonym: 'subj-412',
-    role: 'Release Signing Host',
+    role: 'Release Signing Bastion',
     cluster: 'ops',
     status: 'healthy',
     heartbeat_age_sec: 2,
@@ -94,7 +94,7 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-j',
     pseudonym: 'subj-519',
-    role: 'Audit Ledger Node',
+    role: 'Audit Ledger Store (AWS RDS)',
     cluster: 'fin',
     status: 'healthy',
     heartbeat_age_sec: 4,
@@ -103,7 +103,7 @@ const BASE_NODES: MonitoredNode[] = [
   {
     source_id: 'vm-k',
     pseudonym: 'subj-290',
-    role: 'Artifact Registry',
+    role: 'Artifact Registry (ECR)',
     cluster: 'ops',
     status: 'healthy',
     heartbeat_age_sec: 1,
@@ -124,12 +124,18 @@ const BASE_EDGES: NetworkEdge[] = [
   { id: 'e-core-j', from: 'vm-j', to: 'vega-core', channel: 'file' },
   { id: 'e-core-k', from: 'vm-k', to: 'vega-core', channel: 'network' },
   { id: 'e-a-b', from: 'vm-a', to: 'vm-b', channel: 'network' },
-  { id: 'e-a-d', from: 'vm-a', to: 'vm-d', channel: 'file' },
+  { id: 'e-b-c', from: 'vm-b', to: 'vm-c', channel: 'process' },
+  { id: 'e-a-c', from: 'vm-a', to: 'vm-c', channel: 'network' },
+  { id: 'e-a-e', from: 'vm-a', to: 'vm-e', channel: 'network' },
+  { id: 'e-b-d', from: 'vm-b', to: 'vm-d', channel: 'process' },
   { id: 'e-b-k', from: 'vm-b', to: 'vm-k', channel: 'network' },
-  { id: 'e-c-e', from: 'vm-c', to: 'vm-e', channel: 'process' },
   { id: 'e-c-i', from: 'vm-c', to: 'vm-i', channel: 'process' },
-  { id: 'e-f-g', from: 'vm-f', to: 'vm-g', channel: 'file' },
-  { id: 'e-g-j', from: 'vm-g', to: 'vm-j', channel: 'network' },
+  { id: 'e-d-f', from: 'vm-d', to: 'vm-f', channel: 'process' },
+  { id: 'e-d-k', from: 'vm-d', to: 'vm-k', channel: 'network' },
+  { id: 'e-e-g', from: 'vm-e', to: 'vm-g', channel: 'network' },
+  { id: 'e-f-h', from: 'vm-f', to: 'vm-h', channel: 'process' },
+  { id: 'e-g-j', from: 'vm-g', to: 'vm-j', channel: 'file' },
+  { id: 'e-i-k', from: 'vm-i', to: 'vm-k', channel: 'file' },
 ]
 
 export const SEV1_EXFIL_SCENARIO: ScenarioDefinition = {

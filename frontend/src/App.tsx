@@ -59,7 +59,7 @@ export function App() {
       <main className="relative h-full overflow-clip">
         <PanopticonCanvas ref={topology} />
         <GhostProtocolPanel headerHeight={headerHeight} />
-        <CouncilView />
+        <CouncilView headerHeight={headerHeight} />
         <BlackoutOverlay />
       </main>
 

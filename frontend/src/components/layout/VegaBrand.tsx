@@ -7,12 +7,13 @@ const STATUS_LABEL = {
   investigating: 'Council investigation in progress.',
 } as const
 
-const VEGA_PATHS = [
-  'M1 0H15V44L26 37V0H39V45L2 66V2Z',
-  'M47 0H78L85 4V11H71V9H60V20H76V29H60V44L71 37V35H85V45L48 66V2Z',
-  'M93 0H124L131 4V11H117V9H107V37L117 43V33H112V24H131V66L94 45V2Z',
+const VEGA_LETTERS = [
+  { d: 'M1 0H15V44L26 37V0H39V45L2 66V2Z', dx: 0 },
+  { d: 'M47 0H78L85 4V11H71V9H60V20H76V29H60V44L71 37V35H85V45L48 66V2Z', dx: 10 },
+  { d: 'M93 0H124L131 4V11H117V9H107V37L117 43V33H112V24H131V66L94 45V2Z', dx: 20 },
 ] as const
 
+const VEGA_A_DX = 30
 const VEGA_A_OUTER = 'M151 0H177V67L163 59V33H151V54L139 47V3Z'
 const VEGA_A_INNER = 'M151 9V24H163V9Z'
 const VEGA_A_EVENODD = `${VEGA_A_OUTER}${VEGA_A_INNER}`
@@ -46,10 +47,10 @@ export function VegaBrand({ onRecenter }: { onRecenter: () => void }) {
         aria-label="VEGA — recenter topology"
         aria-describedby="vega-eye-status"
         title={`${STATUS_LABEL[state]} Click to recenter.`}
-        className="vega-glass relative inline-flex min-h-14 cursor-pointer items-center rounded-full px-4 text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:min-h-16"
+        className="vega-glass relative inline-flex min-h-16 cursor-pointer items-center rounded-full px-6 py-1.5 text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:min-h-20 sm:px-8"
       >
         {/* Doom-inspired angular wordmark rendered as frosted liquid glass with specular rim & halo. */}
-        <div aria-hidden="true" className="relative h-10 aspect-[182/72] shrink-0 sm:h-12">
+        <div aria-hidden="true" className="relative h-12 aspect-[212/72] shrink-0 sm:h-16">
           <div
             className="pointer-events-none absolute inset-0 backdrop-blur-md backdrop-saturate-150 backdrop-brightness-125"
             style={{ clipPath: `url(#${clipOuterId})` }}
@@ -57,23 +58,23 @@ export function VegaBrand({ onRecenter }: { onRecenter: () => void }) {
           <svg
             aria-hidden="true"
             focusable="false"
-            viewBox="-2 -2 182 72"
+            viewBox="-2 -2 212 72"
             className="relative block h-full w-full overflow-visible"
           >
             <defs>
               <clipPath id={clipOuterId} clipPathUnits="objectBoundingBox">
-                <g transform="scale(0.00549451, 0.01388889) translate(2, 2)">
-                  {VEGA_PATHS.map((d) => (
-                    <path key={d} d={d} />
+                <g transform="scale(0.00471698, 0.01388889) translate(2, 2)">
+                  {VEGA_LETTERS.map(({ d, dx }) => (
+                    <path key={d} d={d} transform={`translate(${dx}, 0)`} />
                   ))}
-                  <path clipRule="evenodd" d={VEGA_A_EVENODD} />
+                  <path clipRule="evenodd" d={VEGA_A_EVENODD} transform={`translate(${VEGA_A_DX}, 0)`} />
                 </g>
               </clipPath>
               <clipPath id={clipInnerId}>
-                {VEGA_PATHS.map((d) => (
-                  <path key={d} d={d} />
+                {VEGA_LETTERS.map(({ d, dx }) => (
+                  <path key={d} d={d} transform={`translate(${dx}, 0)`} />
                 ))}
-                <path clipRule="evenodd" d={VEGA_A_EVENODD} />
+                <path clipRule="evenodd" d={VEGA_A_EVENODD} transform={`translate(${VEGA_A_DX}, 0)`} />
               </clipPath>
               <linearGradient id={fillGradId} x1="0" y1="0" x2="0.2" y2="1">
                 <stop offset="0%" stopColor="#ffffff" stopOpacity="0.38" />
@@ -102,20 +103,20 @@ export function VegaBrand({ onRecenter }: { onRecenter: () => void }) {
 
             <g filter={`url(#${haloFilterId})`}>
               <g fill={`url(#${fillGradId})`}>
-                {VEGA_PATHS.map((d) => (
-                  <path key={d} d={d} />
+                {VEGA_LETTERS.map(({ d, dx }) => (
+                  <path key={d} d={d} transform={`translate(${dx}, 0)`} />
                 ))}
-                <path fillRule="evenodd" d={VEGA_A_EVENODD} />
+                <path fillRule="evenodd" d={VEGA_A_EVENODD} transform={`translate(${VEGA_A_DX}, 0)`} />
               </g>
               <g clipPath={`url(#${clipInnerId})`}>
-                <path d="M-10 -5 H190 V26 Q90 38 -10 22 Z" fill={`url(#${sheenGradId})`} />
+                <path d="M-10 -5 H220 V26 Q105 38 -10 22 Z" fill={`url(#${sheenGradId})`} />
               </g>
               <g fill="none" stroke={`url(#${rimGradId})`} strokeWidth="1.6" strokeLinejoin="miter">
-                {VEGA_PATHS.map((d) => (
-                  <path key={d} d={d} />
+                {VEGA_LETTERS.map(({ d, dx }) => (
+                  <path key={d} d={d} transform={`translate(${dx}, 0)`} />
                 ))}
-                <path d={VEGA_A_OUTER} />
-                <path d={VEGA_A_INNER} />
+                <path d={VEGA_A_OUTER} transform={`translate(${VEGA_A_DX}, 0)`} />
+                <path d={VEGA_A_INNER} transform={`translate(${VEGA_A_DX}, 0)`} />
               </g>
             </g>
           </svg>

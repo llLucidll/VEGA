@@ -2,6 +2,8 @@ import { motion, useReducedMotion } from 'motion/react'
 import { useId } from 'react'
 import type { VegaEyeState } from '../../store/useVegaEyeState'
 
+const WARDEN_APERTURE = 'M2 12C7.5 6 13 3 18 3s10.5 3 16 9c-5.5 6-11 9-16 9S7.5 18 2 12Z'
+const WARDEN_PUPIL = 'M18 4.5c3.5 4 3.5 11 0 15-3.5-4-3.5-11 0-15Z'
 const OPEN_EYE = 'M18 0C10.8 0 4.1 6.1.5 10.6a2.2 2.2 0 0 0 0 2.8C4.1 17.9 10.8 24 18 24s13.9-6.1 17.5-10.6a2.2 2.2 0 0 0 0-2.8C31.9 6.1 25.2 0 18 0Z'
 
 // The two sides of the closed aperture meet along the lash line. Matching
@@ -9,7 +11,15 @@ const OPEN_EYE = 'M18 0C10.8 0 4.1 6.1.5 10.6a2.2 2.2 0 0 0 0 2.8C4.1 17.9 10.8 
 const CLOSED_APERTURE = 'M2 5C6 11 11.5 15 18 15C24.5 15 30 11 34 5C30 11 24.5 15 18 15C11.5 15 6 11 2 5Z'
 const OPEN_APERTURE = 'M-2 12C3 5 9 -2 18 -2C27 -2 33 5 38 12C33 19 27 26 18 26C9 26 3 19 -2 12Z'
 
-export function VegaEye({ state, className }: { state: VegaEyeState; className?: string }) {
+export function VegaEye({
+  state,
+  className,
+  wardenScan = false,
+}: {
+  state: VegaEyeState
+  className?: string
+  wardenScan?: boolean
+}) {
   const apertureId = useId()
   const reduceMotion = useReducedMotion()
   const closed = state === 'idle'
@@ -25,15 +35,25 @@ export function VegaEye({ state, className }: { state: VegaEyeState; className?:
     >
       {state === 'warden' ? (
         <>
+          <defs>
+            <clipPath id={apertureId}>
+              <path d={WARDEN_APERTURE} />
+            </clipPath>
+          </defs>
           <path
-            d="M2 12C7.5 6 13 3 18 3s10.5 3 16 9c-5.5 6-11 9-16 9S7.5 18 2 12Z"
+            d={WARDEN_APERTURE}
             fill="currentColor"
             fillOpacity=".16"
             stroke="currentColor"
             strokeWidth="2.4"
             strokeLinejoin="round"
           />
-          <path d="M18 4.5c3.5 4 3.5 11 0 15-3.5-4-3.5-11 0-15Z" />
+          <g clipPath={`url(#${apertureId})`}>
+            <path
+              className={wardenScan ? 'vega-warden-pupil-scan' : undefined}
+              d={WARDEN_PUPIL}
+            />
+          </g>
         </>
       ) : (
         <>

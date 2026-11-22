@@ -12,6 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .config import settings
+from .council import (
+    ContainmentExecutor,
+    DryRunContainmentExecutor,
+    JevWardenService,
+    LiveContainmentExecutor,
+)
 from .models import (
     Channel,
     EventIn,
@@ -77,6 +83,7 @@ coordinator = SwarmWindowCoordinator(
     correlator=correlator,
     runtime=runtime,
     max_concurrency=settings.swarm_max_concurrency,
+    stage_delay_seconds=settings.stage_delay_seconds,
 )
 scheduler = WindowScheduler(
     coordinator=coordinator,
@@ -85,10 +92,59 @@ scheduler = WindowScheduler(
     early_analysis=settings.early_analysis,
 )
 
+def build_containment_executor() -> ContainmentExecutor:
+    if settings.warden_dry_run:
+        return DryRunContainmentExecutor(settings.warden_vm_subjects)
+    return LiveContainmentExecutor(
+        auth0_domain=settings.auth0_domain,
+        auth0_client_id=settings.auth0_warden_client_id,
+        auth0_client_secret=settings.auth0_warden_secret,
+        vm_subjects=settings.warden_vm_subjects,
+        telemetry_host=settings.warden_telemetry_host,
+    )
+
+
+containment_executor: ContainmentExecutor = build_containment_executor()
+warden_service = JevWardenService(
+    executor=containment_executor,
+    vm_subjects=settings.warden_vm_subjects,
+)
+
+
+async def _handle_oracle_assessment(assessment, signal, findings, events) -> None:
+    if not settings.warden_enabled:
+        return
+    if settings.stage_delay_seconds > 0:
+        await asyncio.sleep(settings.stage_delay_seconds)
+        if runtime.council_signal != signal:
+            return
+    decision = await warden_service.evaluate(
+        assessment,
+        signal=signal,
+        findings=findings,
+        events=events,
+    )
+    if decision is None or runtime.council_signal != signal:
+        return
+    runtime.warden_decision = decision
+    if not decision.requires_human_approval:
+        await runtime.publish("warden_decision", decision)
+        await warden_service.enforce_decision(decision, runtime)
+        return
+    runtime.threat_mode = "SEV1_ESCALATION"
+    await runtime.publish("warden_decision", decision)
+    await runtime.publish("snapshot", runtime.snapshot())
+
+
 # Oracle council: runs on every SEV1 signal when ORACLE_BRIDGE=1 (no effect otherwise).
 from oracle.sentinel_bridge import attach as attach_oracle  # noqa: E402
 
-oracle_bridge = attach_oracle(coordinator, runtime)
+oracle_bridge = attach_oracle(
+    coordinator,
+    runtime,
+    on_assessment=_handle_oracle_assessment,
+    stage_delay_s=settings.stage_delay_seconds,
+)
 
 
 async def _cleanup_loop() -> None:
@@ -224,27 +280,17 @@ async def authorize_warden(decision_id: str) -> WardenDecision:
 
     decision.approval_status = "approved"
     decision.approval_ref = f"APR-LIVE-{decision_id[-4:]}"
-    decision.execution_status = "contained_dry_run"
-    runtime.threat_mode = "CONTAINED"
-    targets = set(runtime.council_signal.source_ids if runtime.council_signal else [])
-    for node in runtime.nodes:
-        if node.source_id != "vega-core" and (
-            node.source_id in targets
-            or node.source_id in decision.trusted_target_ref
-            or node.source_id in decision.scope
-        ):
-            node.status = "isolated"
-
+    decision.execution_status = "executing"
     entry = WardenAuditEntry(
         id=f"aud-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
         timestamp=datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3] + "Z",
         actor="OPERATOR",
-        message=f"[DRY-RUN] Scoped containment authorized ({decision.approval_ref}).",
+        message=f"Operator authorized containment ({decision.approval_ref}).",
         status="ok",
     )
     runtime.append_warden_audit(entry)
     await runtime.publish("warden_decision", decision)
-    return decision
+    return await warden_service.enforce_decision(decision, runtime)
 
 
 @app.post("/api/warden/{decision_id}/deny", response_model=WardenDecision)
@@ -300,6 +346,11 @@ async def demo_exfil_sink(request: Request) -> dict[str, object]:
 @app.post("/api/demo/reset")
 async def reset_demo() -> dict[str, str]:
     async with scheduler.lifecycle_lock:
+        hosts = sorted(
+            {n.source_id for n in runtime.nodes if n.source_id != "vega-core"}
+            | set(settings.warden_vm_subjects.keys())
+        )
+        await containment_executor.release_all(hosts)
         try:
             await store.reset_demo_streams()
         except StreamStoreUnavailable as exc:
