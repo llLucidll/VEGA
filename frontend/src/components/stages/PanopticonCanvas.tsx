@@ -336,18 +336,6 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         : hover.strength + ((targetPoint ? 1 : 0) - hover.strength) * hoverEase
       hover.motion += (motion - hover.motion) * hoverEase
       drawTopologyDots(ctx, size.width, size.height, origin, camera.zoom, hover)
-      const coreScreen = toScreen(0, 0)
-
-      // Subtle orbital radar rings around vega-core
-      for (const r of [130, 230, 330]) {
-        ctx.beginPath()
-        ctx.arc(coreScreen.sx, coreScreen.sy, r * camera.zoom, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.07)'
-        ctx.lineWidth = 1
-        ctx.setLineDash([4, 8])
-        ctx.stroke()
-        ctx.setLineDash([])
-      }
 
       // Draw edges
       for (const edge of state.edges) {
