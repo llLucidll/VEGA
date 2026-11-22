@@ -19,12 +19,19 @@ const CHANNEL_META: Record<Channel, { label: string; color: string; icon: typeof
   },
 }
 
-export function GhostProtocolPanel() {
+export function GhostProtocolPanel({ headerHeight }: { headerHeight: number }) {
   const stage = useVegaStore((s) => s.stage)
-  const selectedNodeId = useVegaStore((s) => s.selectedNodeId) ?? 'vm-a'
+  const dataMode = useVegaStore((s) => s.dataMode)
   const nodes = useVegaStore((s) => s.nodes)
   const events = useVegaStore((s) => s.events)
   const findings = useVegaStore((s) => s.findings)
+  const selectedNodeId = useVegaStore(
+    (s) =>
+      s.selectedNodeId ??
+      s.findings.at(-1)?.source_id ??
+      s.nodes.find((n) => n.source_id !== 'vega-core')?.source_id ??
+      (s.dataMode === 'SIMULATED' ? 'vm-a' : s.nodes[0]?.source_id ?? null),
+  )
   const councilSignal = useVegaStore((s) => s.councilSignal)
   const selectedEventId = useVegaStore((s) => s.selectedEventId)
   const selectEvent = useVegaStore((s) => s.selectEvent)
@@ -32,13 +39,17 @@ export function GhostProtocolPanel() {
 
   const [channelFilter, setChannelFilter] = useState<'all' | Channel>('all')
 
-  const node = nodes.find((n) => n.source_id === selectedNodeId)
-  const nodeEvents = events.filter(
-    (e) =>
-      (e.source_id === selectedNodeId || (selectedNodeId === 'vm-a' && e.payload.src === 'vm-a')) &&
-      (channelFilter === 'all' || e.channel === channelFilter),
-  )
-  const nodeFindings = findings.filter((f) => f.source_id === selectedNodeId)
+  const node = selectedNodeId ? nodes.find((n) => n.source_id === selectedNodeId) : undefined
+  const nodeEvents = selectedNodeId
+    ? events.filter(
+        (e) =>
+          (e.source_id === selectedNodeId || e.payload.src === selectedNodeId) &&
+          (channelFilter === 'all' || e.channel === channelFilter),
+      )
+    : []
+  const nodeFindings = selectedNodeId
+    ? findings.filter((f) => f.source_id === selectedNodeId)
+    : []
 
   return (
     <AnimatePresence>
@@ -48,7 +59,8 @@ export function GhostProtocolPanel() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 460, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-          className="vega-panel absolute top-4 right-4 bottom-16 z-20 flex w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl"
+          style={{ top: `max(8rem, ${headerHeight + 6}px)` }}
+          className="vega-panel absolute right-4 bottom-16 z-20 flex w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl"
         >
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-800/90 px-4 py-3">
@@ -59,11 +71,11 @@ export function GhostProtocolPanel() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <h2 className="font-mono-tabular text-base font-bold text-white">
-                  {node?.source_id ?? selectedNodeId}
+                  {node?.source_id ?? selectedNodeId ?? 'No endpoint'}
                 </h2>
                 <span className="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 font-mono-tabular text-[10px] text-slate-300">
                   <Lock className="h-2.5 w-2.5 text-amber-300" />
-                  {node?.pseudonym ?? 'subj-042'} • IDENTITY SEALED
+                  {node?.pseudonym ?? (dataMode === 'SIMULATED' ? 'subj-042' : 'unassigned')} • IDENTITY SEALED
                 </span>
               </div>
             </div>

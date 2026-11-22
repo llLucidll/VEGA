@@ -7,7 +7,7 @@
     --vega-border: rgba(148, 163, 184, 0.16);
     --vega-accent: #38bdf8;
     --vega-accent-glow: rgba(56, 189, 248, 0.28);
-    --vega-oracle: #a855f7;
+    --vega-oracle: #7851a9;
     --vega-warden: #ef4444;
     --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -19,8 +19,8 @@
   }
 
   [data-threat-mode='INVESTIGATE'] {
-    --vega-accent: #a855f7;
-    --vega-accent-glow: rgba(168, 85, 247, 0.32);
+    --vega-accent: var(--vega-oracle);
+    --vega-accent-glow: color-mix(in srgb, var(--vega-oracle) 32%, transparent);
   }
 
   [data-threat-mode='SEV1_ESCALATION'],
@@ -52,11 +52,168 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 20px 50px rgba(0, 0, 0, 0.55);
 }
 
-.vega-grid-bg {
-  background-image:
-    linear-gradient(to right, rgba(56, 189, 248, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.045) 1px, transparent 1px);
-  background-size: 40px 40px;
+.vega-glass::before {
+  content: '';
+  position: absolute;
+  inset: -0.5rem -1.5rem;
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(5, 8, 17, 0.14);
+  backdrop-filter: blur(7px) saturate(120%) brightness(0.85);
+  /* Feather the blur into the graph instead of outlining the button. */
+  mask-image: radial-gradient(ellipse closest-side, #000 32%, rgba(0, 0, 0, 0.75) 60%, transparent);
+}
+
+.vega-dashboard-header {
+  background: linear-gradient(180deg, rgba(14, 20, 33, 0.82), rgba(9, 14, 24, 0.72));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.vega-ticker {
+  background: rgba(19, 26, 41, 0.82);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.vega-ticker-window {
+  overflow: clip;
+  mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 8px), transparent);
+}
+
+.vega-ticker-track {
+  display: flex;
+  width: max-content;
+  min-width: 200%;
+  animation: vega-ticker-scroll 34s linear infinite;
+}
+
+.vega-ticker-cycle {
+  display: flex;
+  flex: 1 0 auto;
+}
+
+.vega-ticker-item {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding-inline: 1rem;
+  border-inline-end: 1px solid rgba(148, 163, 184, 0.12);
+  white-space: nowrap;
+}
+
+.vega-ticker-track[data-paused='true'] {
+  animation-play-state: paused;
+}
+
+@media (hover: hover) {
+  .vega-ticker-window:hover .vega-ticker-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes vega-ticker-scroll {
+  to { transform: translateX(-50%); }
+}
+
+[data-eye-state='idle'],
+[data-eye-state='alert'] {
+  --vega-state-color: #6ee7b7;
+}
+
+[data-eye-state='investigating'] {
+  --vega-state-color: var(--vega-oracle);
+}
+
+[data-core-state='idle'] {
+  --vega-state-color: #4ade80;
+}
+
+[data-core-state='alert'] {
+  --vega-state-color: #38bdf8;
+}
+
+[data-core-state='investigating'] {
+  --vega-state-color: #c084fc;
+}
+
+[data-core-state='warden'],
+[data-eye-state='warden'] {
+  --vega-state-color: var(--color-red-400);
+}
+
+[data-eye-state] {
+  color: var(--vega-state-color);
+}
+
+.vega-core {
+  --core-tint: var(--vega-state-color, #38bdf8);
+  background-color: color-mix(in srgb, var(--core-tint) 20%, var(--vega-bg));
+  border-color: color-mix(in srgb, var(--core-tint) 72%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--core-tint) 23%, transparent);
+}
+
+.vega-eye-scan {
+  animation: vega-eye-scan 4s ease-in-out infinite;
+}
+
+@keyframes vega-eye-scan {
+  0%, 12%, 82%, 100% { transform: translateX(0); }
+  23%, 42% { transform: translateX(-3.4px); }
+  55%, 72% { transform: translateX(3.4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vega-eye-scan {
+    animation: none;
+  }
+
+  .vega-ticker-window {
+    mask-image: none;
+  }
+
+  .vega-ticker-track {
+    width: auto;
+    min-width: 0;
+    animation: none;
+  }
+
+  .vega-ticker-cycle {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+
+  .vega-ticker-cycle[aria-hidden='true'],
+  .vega-ticker-toggle {
+    display: none;
+  }
+
+  .vega-ticker-item {
+    min-height: 1.75rem;
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .vega-dashboard-header {
+    background: #0e1421;
+    backdrop-filter: none;
+  }
+
+  .vega-ticker {
+    background: #131a29;
+    backdrop-filter: none;
+  }
+
+  .vega-glass {
+    background: var(--vega-bg);
+  }
+
+  .vega-glass::before {
+    content: none;
+  }
 }
 
 .vega-scanlines {

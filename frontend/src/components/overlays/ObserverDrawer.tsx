@@ -9,12 +9,38 @@ export function ObserverDrawer() {
   const observerOpen = useVegaStore((s) => s.observerOpen)
   const setObserverOpen = useVegaStore((s) => s.setObserverOpen)
   const observerMessages = useVegaStore((s) => s.observerMessages)
+  const dataMode = useVegaStore((s) => s.dataMode)
   const scenarioId = useVegaStore((s) => s.scenarioId)
+  const activeWindowId = useVegaStore((s) => s.activeWindowId)
+  const councilSignal = useVegaStore((s) => s.councilSignal)
+  const nodes = useVegaStore((s) => s.nodes)
   const selectEvent = useVegaStore((s) => s.selectEvent)
   const setChronosExpanded = useVegaStore((s) => s.setChronosExpanded)
 
   const [input, setInput] = useState('')
-  const presets = SCENARIOS[scenarioId].observerPresets
+  const primaryLiveNode =
+    councilSignal?.source_ids[0] ?? nodes.find((n) => n.source_id !== 'vega-core')?.source_id
+  const presets =
+    dataMode === 'SIMULATED'
+      ? SCENARIOS[scenarioId].observerPresets.map((p) => ({ id: p.id, prompt: p.prompt }))
+      : [
+          ...(primaryLiveNode
+            ? [
+                {
+                  id: 'live-node',
+                  prompt: `Summarize telemetry and findings for ${primaryLiveNode} in ${activeWindowId}.`,
+                },
+              ]
+            : []),
+          {
+            id: 'live-window',
+            prompt: `What is the current status of window ${activeWindowId} and preserved evidence?`,
+          },
+          {
+            id: 'live-ttl',
+            prompt: 'Verify privacy guarantees and Redis stream TTL retention.',
+          },
+        ]
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -152,7 +178,11 @@ export function ObserverDrawer() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask VEGA about subj-042, policies, or evidence…"
+                placeholder={
+                  dataMode === 'SIMULATED'
+                    ? 'Ask VEGA about subj-042, policies, or evidence…'
+                    : 'Ask VEGA about active endpoints, policies, or evidence…'
+                }
                 className="flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-sky-400/60 focus:outline-none"
               />
               <button

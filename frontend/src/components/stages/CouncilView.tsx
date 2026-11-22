@@ -1,9 +1,12 @@
 import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, CheckCircle2, Eye, Shield, XCircle } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { vegaSource } from '../../engine/sourceManager'
+import { useVegaEyeState } from '../../store/useVegaEyeState'
 import { useVegaStore } from '../../store/useVegaStore'
+import { VegaEye } from '../layout/VegaEye'
 
 export function CouncilView() {
+  const eyeState = useVegaEyeState()
   const stage = useVegaStore((s) => s.stage)
   const councilSignal = useVegaStore((s) => s.councilSignal)
   const oracleAssessment = useVegaStore((s) => s.oracleAssessment)
@@ -20,12 +23,13 @@ export function CouncilView() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#050811]/88 px-6 pt-5 pb-20 backdrop-blur-md"
+          className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#050811]/88 px-6 pt-32 pb-20 backdrop-blur-md"
         >
           {/* Header */}
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
             <div>
-              <div className="font-mono-tabular text-[11px] tracking-[0.22em] text-purple-400 uppercase">
+              <div className="flex items-center gap-2 font-mono-tabular text-[11px] tracking-[0.22em] text-purple-400 uppercase">
+                <VegaEye state={eyeState} className="h-auto w-7 shrink-0" />
                 03 / ORACLE — THE COUNCIL
               </div>
               <h1 className="mt-1 text-xl font-bold text-white">

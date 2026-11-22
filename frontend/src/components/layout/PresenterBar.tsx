@@ -19,12 +19,17 @@ export function PresenterBar() {
   const isPlaying = useVegaStore((s) => s.isPlaying)
   const scenarioId = useVegaStore((s) => s.scenarioId)
   const stage = useVegaStore((s) => s.stage)
+  const hasFindings = useVegaStore((s) => s.findings.length > 0)
   const chronosExpanded = useVegaStore((s) => s.chronosExpanded)
   const wardenDecision = useVegaStore((s) => s.wardenDecision)
 
   const nextCueLabel =
     stage === 'panopticon'
-      ? 'Next: Inject Anomaly'
+      ? hasFindings
+        ? 'Next: Inspect Node'
+        : dataMode === 'LIVE'
+          ? 'Next: Flush Window'
+          : 'Next: Inject Anomaly'
       : stage === 'ghost_protocol'
         ? 'Next: The Council'
         : stage === 'council'
@@ -45,7 +50,7 @@ export function PresenterBar() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.18 }}
-          className="vega-panel fixed top-16 right-4 z-40 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
+          className="vega-panel pointer-events-auto absolute inset-x-4 top-full mt-2 ml-auto flex w-fit flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
         >
           {/* Source Mode Toggle */}
           <div className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 p-0.5 font-mono-tabular text-[10px]">
@@ -85,24 +90,28 @@ export function PresenterBar() {
             <ArrowRight className="h-3 w-3" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => vegaSource.stepNextEvent()}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200 hover:border-sky-400/50"
-            title="Emit one single event without changing stage"
-          >
-            <PlusCircle className="h-3 w-3 text-sky-400" />
-            <span>+1 Event</span>
-          </button>
+          {dataMode === 'SIMULATED' && (
+            <>
+              <button
+                type="button"
+                onClick={() => vegaSource.stepNextEvent()}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200 hover:border-sky-400/50"
+                title="Emit one single event without changing stage"
+              >
+                <PlusCircle className="h-3 w-3 text-sky-400" />
+                <span>+1 Event</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => vegaSource.injectAnomaly()}
-            className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/15 px-2.5 py-1 font-medium text-red-200 hover:bg-red-500/25"
-          >
-            <Zap className="h-3 w-3" />
-            <span>Inject Anomaly</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => vegaSource.injectAnomaly()}
+                className="inline-flex items-center gap-1 rounded-md border border-red-500/40 bg-red-500/15 px-2.5 py-1 font-medium text-red-200 hover:bg-red-500/25"
+              >
+                <Zap className="h-3 w-3" />
+                <span>Inject Anomaly</span>
+              </button>
+            </>
+          )}
 
           {dataMode === 'LIVE' && (
             <button
