@@ -106,11 +106,16 @@ def default_edges() -> list[NetworkEdge]:
 class VegaRuntimeState:
     def __init__(self) -> None:
         self._subscribers: set[asyncio.Queue[str]] = set()
+        self._resume_event = asyncio.Event()
+        self._resume_event.set()
         self.reset()
 
     def reset(self) -> None:
         now = datetime.now(timezone.utc)
         self.threat_mode: ThreatMode = "WATCH"
+        self.pipeline_paused: bool = False
+        if hasattr(self, "_resume_event"):
+            self._resume_event.set()
         self.nodes: list[MonitoredNode] = default_nodes()
         self.edges: list[NetworkEdge] = default_edges()
         self.windows: list[Window] = [
@@ -138,11 +143,24 @@ class VegaRuntimeState:
         expires_at = self.oldest_stream_event_at + timedelta(seconds=settings.retention_seconds)
         return max(0, int((expires_at - current).total_seconds()))
 
+    def set_pipeline_paused(self, paused: bool) -> bool:
+        self.pipeline_paused = paused
+        if paused:
+            self._resume_event.clear()
+        else:
+            self._resume_event.set()
+        return self.pipeline_paused
+
+    async def wait_if_paused(self) -> None:
+        while self.pipeline_paused:
+            await self._resume_event.wait()
+
     def snapshot(self) -> StateSnapshot:
         return StateSnapshot(
             threat_mode=self.threat_mode,
             active_window_id=self.active_window_id,
             ttl_seconds_remaining=self.compute_ttl_seconds_remaining(),
+            pipeline_paused=self.pipeline_paused,
             nodes=self.nodes,
             edges=self.edges,
             windows=self.windows,

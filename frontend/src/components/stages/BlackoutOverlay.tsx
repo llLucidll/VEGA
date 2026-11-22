@@ -1,9 +1,10 @@
-import { AlertOctagon, ArrowLeft, CheckCircle2, ShieldAlert, ShieldCheck, Terminal, XCircle } from 'lucide-react'
+import { AlertOctagon, ArrowLeft, ShieldAlert, ShieldCheck, Terminal } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { vegaSource } from '../../engine/sourceManager'
 import { isWardenApprovalExpired, isWardenApprovalPending } from '../../engine/wardenApproval'
 import { useVegaStore } from '../../store/useVegaStore'
+import { VegaCoreMark } from '../layout/VegaCoreMark'
 import { VegaEye } from '../layout/VegaEye'
 
 export function BlackoutOverlay() {
@@ -116,7 +117,7 @@ export function BlackoutOverlay() {
                     >
                       VEGA HAS ASSUMED CONTROL
                     </h1>
-                    <p role="status" className={`mt-4 font-mono-tabular text-xs tracking-widest uppercase ${isContained ? 'text-emerald-300' : 'text-amber-200'}`}>
+                    <p role="status" className={`mt-4 font-display text-xs tracking-widest uppercase ${isContained ? 'text-emerald-300' : 'text-amber-200'}`}>
                       {containmentStatus}
                     </p>
                     <p className="mt-2 text-sm text-slate-300">
@@ -163,13 +164,19 @@ export function BlackoutOverlay() {
                         className="flex items-start gap-2.5 rounded-xl border border-slate-800/90 bg-slate-950/70 p-2.5"
                       >
                         {chk.passed ? (
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                          <VegaCoreMark
+                            label="Passed"
+                            className="mt-0.5 size-4.5 shrink-0 text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.55)]"
+                          />
                         ) : (
-                          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                          <VegaCoreMark
+                            label="Requires review"
+                            className="mt-0.5 size-4.5 shrink-0 text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.55)]"
+                          />
                         )}
                         <div>
-                          <div className="text-xs font-semibold text-slate-100">{chk.label}</div>
-                          <div className="text-[11px] text-slate-400">{chk.detail}</div>
+                          <div className="font-display text-xs text-slate-100">{chk.label}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-400">{chk.detail}</div>
                         </div>
                       </div>
                     ))}

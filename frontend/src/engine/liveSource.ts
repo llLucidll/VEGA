@@ -72,6 +72,26 @@ export class LiveStreamSource implements VegaDataSource {
     useVegaStore.getState().setPlaying(playing)
   }
 
+  async setPipelinePaused(paused: boolean) {
+    const store = useVegaStore.getState()
+    store.setPipelinePaused(paused)
+    try {
+      const res = await fetch(`${API_BASE}/api/demo/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paused }),
+      })
+      if (res.ok) {
+        const data = (await res.json()) as { pipeline_paused?: boolean }
+        if (typeof data.pipeline_paused === 'boolean') {
+          useVegaStore.getState().setPipelinePaused(data.pipeline_paused)
+        }
+      }
+    } catch {
+      // SSE snapshot will reconcile if reachable
+    }
+  }
+
   setSpeed(multiplier: number) {
     useVegaStore.getState().setPlaybackSpeed(multiplier)
   }

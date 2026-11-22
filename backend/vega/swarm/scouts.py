@@ -66,6 +66,9 @@ CHANNEL_GUIDANCE: dict[Channel, str] = {
         "example, tar writes a hidden archive and a later curl command uses that same file "
         "as an upload body. Cite both commands when linked by an artifact path. A command "
         "from Bash history does not establish success; report what the command attempted. "
+        "Do not suppress a hidden-archive staging (/tmp/.) plus curl upload sequence based on "
+        "service unit, user, or backup labels; report the sequence so Oracle Council can "
+        "evaluate organizational exemptions. "
         "Do not flag a tool name alone, tar --version, routine builds, or health checks."
     ),
 }

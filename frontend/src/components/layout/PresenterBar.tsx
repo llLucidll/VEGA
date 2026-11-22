@@ -1,8 +1,10 @@
 import {
   ArrowRight,
   FastForward,
+  Minus,
   Pause,
   Play,
+  Plus,
   PlusCircle,
   Radio,
   RotateCcw,
@@ -10,18 +12,21 @@ import {
   Zap,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { flushLiveWindow, switchDataMode, vegaSource } from '../../engine/sourceManager'
+import { flushLiveWindow, switchDataMode, togglePipelinePause, vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
 
 export function PresenterBar() {
   const presenterOpen = useVegaStore((s) => s.presenterOpen)
   const dataMode = useVegaStore((s) => s.dataMode)
   const isPlaying = useVegaStore((s) => s.isPlaying)
+  const pipelinePaused = useVegaStore((s) => s.pipelinePaused)
   const scenarioId = useVegaStore((s) => s.scenarioId)
   const stage = useVegaStore((s) => s.stage)
   const hasFindings = useVegaStore((s) => s.findings.length > 0)
   const chronosExpanded = useVegaStore((s) => s.chronosExpanded)
   const wardenDecision = useVegaStore((s) => s.wardenDecision)
+  const zoomPercent = useVegaStore((s) => s.zoomPercent)
+  const setZoomPercent = useVegaStore((s) => s.setZoomPercent)
 
   const nextCueLabel =
     stage === 'panopticon'
@@ -126,6 +131,21 @@ export function PresenterBar() {
 
           <button
             type="button"
+            onClick={() => void togglePipelinePause()}
+            aria-pressed={pipelinePaused}
+            title="Hold VEGA before escalating to Correlator, Council, or Warden"
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium transition ${
+              pipelinePaused
+                ? 'border-amber-400/60 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
+                : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-sky-400/50'
+            }`}
+          >
+            {pipelinePaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+            <span>{pipelinePaused ? 'Resume Pipeline' : 'Pause Pipeline'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => vegaSource.jumpToStage('council')}
             className="inline-flex items-center gap-1 rounded-md border border-purple-500/40 bg-purple-500/15 px-2 py-1 text-purple-200 hover:bg-purple-500/25"
           >
@@ -176,6 +196,44 @@ export function PresenterBar() {
             {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
             <span>Ambient</span>
           </button>
+
+          <div className="h-4 w-px bg-slate-800" />
+
+          <div
+            role="group"
+            aria-label="Topology zoom"
+            className="flex items-center rounded-md border border-slate-800 bg-slate-950 p-0.5 font-mono-tabular text-[10px]"
+          >
+            <button
+              type="button"
+              aria-label="Zoom out"
+              title="Zoom out (−)"
+              disabled={zoomPercent <= 50}
+              onClick={() => setZoomPercent(zoomPercent - 10)}
+              className="grid h-6 w-6 place-items-center rounded text-slate-300 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+            >
+              <Minus aria-hidden="true" className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              aria-label={`Reset zoom to 100 percent (currently ${zoomPercent} percent)`}
+              title="Reset zoom (0)"
+              onClick={() => setZoomPercent(100)}
+              className="min-w-10 px-1 text-center text-slate-200 hover:text-white"
+            >
+              {zoomPercent}%
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              title="Zoom in (+)"
+              disabled={zoomPercent >= 100}
+              onClick={() => setZoomPercent(zoomPercent + 10)}
+              className="grid h-6 w-6 place-items-center rounded text-slate-300 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+            >
+              <Plus aria-hidden="true" className="h-3 w-3" />
+            </button>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

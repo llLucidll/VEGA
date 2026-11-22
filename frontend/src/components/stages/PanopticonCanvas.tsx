@@ -1,5 +1,5 @@
-import { Lock, Minus, Plus, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
+import { Lock, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
 import vegaCoreBlue from '../../assets/vega-core-idle.png'
 import vegaCoreGreen from '../../assets/vega-core-alert.png'
 import vegaCorePurple from '../../assets/vega-core-council.png'
@@ -16,10 +16,8 @@ type CanvasDrag =
   | { kind: 'pan'; pointerId: number; last: Point }
   | { kind: 'node'; pointerId: number; nodeId: string; start: Point; offset: Point; moving: boolean }
 
-const MIN_ZOOM = 50
 const DEFAULT_ZOOM = 100
 const ZOOM_STEP = 10
-const ZOOM_BUTTON_CLASS = 'grid h-10 w-10 place-items-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-300 disabled:pointer-events-none disabled:opacity-35'
 
 const CORE_ARTWORK = {
   idle: vegaCoreGreen,
@@ -37,7 +35,6 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const nodeElRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const pan = useRef({ x: 0, y: 0 })
-  const zoomRef = useRef(DEFAULT_ZOOM)
   const orbitSeconds = useRef(0)
   const positionsRef = useRef(new Map<string, Point>())
   const layoutIds = useRef<string[]>([])
@@ -53,19 +50,12 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
   const selectNode = useVegaStore((s) => s.selectNode)
   const setStage = useVegaStore((s) => s.setStage)
   const [size, setSize] = useState({ width: 1280, height: 720 })
-  const [zoomPercent, setZoomPercent] = useState(DEFAULT_ZOOM)
 
   useImperativeHandle(ref, () => ({
     recenter: () => {
       pan.current = { x: 0, y: 0 }
     },
   }), [])
-
-  const setCanvasZoom = useCallback((percent: number) => {
-    const next = Math.max(MIN_ZOOM, Math.min(DEFAULT_ZOOM, percent))
-    zoomRef.current = next
-    setZoomPercent(next)
-  }, [])
 
   useEffect(() => {
     const el = containerRef.current
@@ -90,7 +80,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
     canvas.height = size.height * dpr
 
     const origin = { x: size.width / 2, y: size.height / 2 }
-    const camera = { x: 0, y: 0, zoom: zoomRef.current / DEFAULT_ZOOM, panWeight: 1 }
+    const camera = { x: 0, y: 0, zoom: useVegaStore.getState().zoomPercent / DEFAULT_ZOOM, panWeight: 1 }
     const hover: TopologyHover = { x: 0, y: 0, strength: 0, motion: 0 }
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     let hoverTarget: Point | null = null
@@ -235,15 +225,19 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         case 'Home':
           pan.current = { x: 0, y: 0 }
           break
-        case '-':
-          setCanvasZoom(zoomRef.current - ZOOM_STEP)
+        case '-': {
+          const s = useVegaStore.getState()
+          s.setZoomPercent(s.zoomPercent - ZOOM_STEP)
           break
+        }
         case '=':
-        case '+':
-          setCanvasZoom(zoomRef.current + ZOOM_STEP)
+        case '+': {
+          const s = useVegaStore.getState()
+          s.setZoomPercent(s.zoomPercent + ZOOM_STEP)
           break
+        }
         case '0':
-          setCanvasZoom(DEFAULT_ZOOM)
+          useVegaStore.getState().setZoomPercent(DEFAULT_ZOOM)
           break
         default:
           return
@@ -314,7 +308,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
       const focusPos = positions.get(focusId)
 
       // Smooth camera target: zoom into selected node and shift left to leave room for Ghost Protocol drawer
-      const targetZoom = isGhost ? 1.42 : zoomRef.current / DEFAULT_ZOOM
+      const targetZoom = isGhost ? 1.42 : state.zoomPercent / DEFAULT_ZOOM
       const targetX = isGhost && focusPos ? focusPos.x + 130 : 0
       const targetY = isGhost && focusPos ? focusPos.y : 0
 
@@ -375,15 +369,15 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
         ctx.lineTo(s2.sx, s2.sy)
 
         if (isIsolated) {
-          ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)'
-          ctx.setLineDash([4, 6])
-          ctx.lineWidth = 1
+          ctx.strokeStyle = isPeerLink ? 'rgba(248, 113, 113, 0.45)' : 'rgba(100, 116, 139, 0.24)'
+          ctx.setLineDash([5, 5])
+          ctx.lineWidth = isPeerLink ? 1.4 : 1
         } else if (edge.anomalous) {
           ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)'
           ctx.lineWidth = 2
         } else if (isPeerLink) {
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.30)'
-          ctx.lineWidth = 1.3
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.52)'
+          ctx.lineWidth = 1.6
         } else {
           ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)'
           ctx.lineWidth = 1.1
@@ -471,7 +465,7 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
       el.removeEventListener('keydown', onKeyDown)
       el.removeEventListener('click', onClickCapture, true)
     }
-  }, [setCanvasZoom, size])
+  }, [size])
 
   const handleNodeClick = (node: MonitoredNode) => {
     if (node.source_id === 'vega-core') return
@@ -492,44 +486,6 @@ export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
       className="relative h-full w-full touch-none cursor-grab overflow-clip select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-300 data-[dragging=true]:cursor-grabbing"
     >
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />
-
-      {stage === 'panopticon' && (
-        <div
-          role="group"
-          aria-label="Topology zoom"
-          className="vega-panel absolute right-4 bottom-18 z-10 flex cursor-default items-center rounded-xl p-1"
-        >
-          <button
-            type="button"
-            aria-label="Zoom out"
-            title="Zoom out (−)"
-            className={ZOOM_BUTTON_CLASS}
-            disabled={zoomPercent === MIN_ZOOM}
-            onClick={() => setCanvasZoom(zoomRef.current - ZOOM_STEP)}
-          >
-            <Minus aria-hidden="true" className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label={`Reset zoom to 100 percent (currently ${zoomPercent} percent)`}
-            title="Reset zoom (0)"
-            className={`${ZOOM_BUTTON_CLASS} min-w-14 font-mono-tabular text-xs`}
-            onClick={() => setCanvasZoom(DEFAULT_ZOOM)}
-          >
-            {zoomPercent}%
-          </button>
-          <button
-            type="button"
-            aria-label="Zoom in"
-            title="Zoom in (+)"
-            className={ZOOM_BUTTON_CLASS}
-            disabled={zoomPercent === DEFAULT_ZOOM}
-            onClick={() => setCanvasZoom(zoomRef.current + ZOOM_STEP)}
-          >
-            <Plus aria-hidden="true" className="size-4" />
-          </button>
-        </div>
-      )}
 
       {/* Interactive HTML Node Badges synced to Canvas coordinates */}
       <div className="absolute inset-0 z-0">

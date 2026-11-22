@@ -401,3 +401,69 @@ async def test_typesafe_jev_evaluator_parses_system_one_response():
     assert resp.choices["containment_action"].choice == "revoke_credentials"
     assert resp.choices["containment_action"].confidence == pytest.approx(0.91)
     assert resp.nouls["credential_compromise"].noul == pytest.approx(0.94)
+
+
+async def test_oracle_no_action_clears_elevated_nodes_and_threat_mode(monkeypatch):
+    from vega import api
+
+    api.runtime.reset()
+    now = datetime.now(timezone.utc)
+    api.runtime.record_event(
+        StoredEvent(
+            schema_version=1,
+            run_id="clear-test",
+            event_id="evt-c-1",
+            source_id="vm-c",
+            channel="network",
+            event_time=now,
+            ingested_at=now,
+            payload={"host_role": "Linux VM Endpoint"},
+        )
+    )
+    for node in api.runtime.nodes:
+        if node.source_id == "vm-c":
+            node.status = "compromised"
+    for edge in api.runtime.edges:
+        if edge.from_node == "vm-c" or edge.to_node == "vm-c":
+            edge.anomalous = True
+    api.runtime.threat_mode = "INVESTIGATE"
+
+    base_signal, _, _ = _fixture()
+    signal = base_signal.model_copy(update={"source_ids": ["vm-c"]})
+    api.runtime.council_signal = signal
+    assessment = _assessment([_verdict("vm-c", "NO_ACTION")], signal_id=signal.signal_id)
+
+    monkeypatch.setattr(api.settings, "warden_enabled", True)
+    monkeypatch.setattr(api.settings, "stage_delay_seconds", 0.0)
+
+    await api._handle_oracle_assessment(assessment, signal, [], [])
+
+    assert api.runtime.warden_decision is None
+    assert api.runtime.threat_mode == "WATCH"
+    assert next(n for n in api.runtime.nodes if n.source_id == "vm-c").status == "healthy"
+    assert all(
+        not e.anomalous for e in api.runtime.edges if e.from_node == "vm-c" or e.to_node == "vm-c"
+    )
+    api.runtime.reset()
+
+
+async def test_pipeline_pause_holds_and_resumes_escalation(monkeypatch):
+    from fastapi.testclient import TestClient
+    from vega import api
+
+    api.runtime.reset()
+    with TestClient(api.app) as client:
+        res = client.post("/api/demo/pause", json={"paused": True})
+        assert res.status_code == 200
+        assert res.json() == {"pipeline_paused": True}
+        assert api.runtime.pipeline_paused is True
+
+        waiter = asyncio.create_task(api.runtime.wait_if_paused())
+        await asyncio.sleep(0.05)
+        assert not waiter.done()
+
+        res2 = client.post("/api/demo/pause", json={"paused": False})
+        assert res2.status_code == 200
+        assert res2.json() == {"pipeline_paused": False}
+        await asyncio.wait_for(waiter, timeout=1.0)
+    api.runtime.reset()
