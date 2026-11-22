@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M8122VBH24BY98XH6GHQ3YFW",
+  "session_id": "01a20105-b1ed-7062-863a-4ed09c40d3c5",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-22T07:21:17.123569478Z",
+  "branch": "final-ui-warden-feats",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "backend/.env.example",
+    "backend/pyproject.toml",
+    "backend/uv.lock",
+    "backend/vega/api.py",
+    "backend/vega/config.py",
+    "backend/vega/models.py",
+    "backend/vega/state.py",
+    "backend/vega/swarm/coordinator.py"
+  ],
+  "agent": "Pi",
+  "model": "gpt-6.2-sol",
+  "turn_id": "bef090348bb4",
+  "compact_transcript_start": 0,
+  "session_token_usage": {
+    "input_tokens": 41689,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 25088,
+    "output_tokens": 1378,
+    "api_call_count": 7
+  },
+  "redaction": {
+    "replacements": 2,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 2,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 1
+  }
+}
