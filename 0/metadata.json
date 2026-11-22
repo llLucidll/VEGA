@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M8092WYY9EPP4718XCHFAVAA",
+  "session_id": "01a1fff9-6bc7-73ee-bd3a-533fb2ea353e",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-22T00:04:23.027401657Z",
+  "branch": "frontend-redesign",
+  "checkpoints_count": 10,
+  "save_step_count": 11,
+  "files_touched": [
+    "frontend/package-lock.json",
+    "frontend/package.json",
+    "frontend/src/App.tsx",
+    "frontend/src/components/layout/DashboardHeader.tsx",
+    "frontend/src/components/layout/PresenterBar.tsx",
+    "frontend/src/components/layout/TelemetryTicker.tsx",
+    "frontend/src/components/layout/VegaBrand.tsx",
+    "frontend/src/components/stages/GhostProtocolPanel.tsx",
+    "frontend/src/components/stages/PanopticonCanvas.tsx",
+    "frontend/src/engine/telemetryMetrics.ts",
+    "frontend/src/engine/topologyLayout.ts",
+    "frontend/src/index.css",
+    "frontend/tests/topologyLayout.test.mjs"
+  ],
+  "agent": "Pi",
+  "model": "gpt-6.2-sol",
+  "turn_id": "3c9f358db72c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 392854,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 15106432,
+    "output_tokens": 59478,
+    "api_call_count": 106
+  },
+  "session_token_usage": {
+    "input_tokens": 986433,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 29619584,
+    "output_tokens": 129369,
+    "api_call_count": 249
+  },
+  "redaction": {
+    "replacements": 1,
+    "layers": {
+      "betterleaks": 1,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 29
+  }
+}
