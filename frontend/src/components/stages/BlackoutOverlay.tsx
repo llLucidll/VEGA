@@ -2,6 +2,7 @@ import { AlertOctagon, ArrowLeft, CheckCircle2, Lock, ShieldAlert, ShieldCheck, 
 import { AnimatePresence, motion } from 'motion/react'
 import { vegaSource } from '../../engine/sourceManager'
 import { useVegaStore } from '../../store/useVegaStore'
+import { VegaEye } from '../layout/VegaEye'
 
 export function BlackoutOverlay() {
   const stage = useVegaStore((s) => s.stage)
@@ -11,6 +12,13 @@ export function BlackoutOverlay() {
   const isContained = wardenDecision?.execution_status === 'contained_dry_run'
   const isExecuting = wardenDecision?.execution_status === 'executing'
   const isDenied = wardenDecision?.execution_status === 'denied'
+  const containmentStatus = isContained
+    ? 'Threat contained in dry run'
+    : isExecuting
+      ? 'Dry-run containment in progress'
+      : isDenied
+        ? 'Containment held by operator'
+        : 'Awaiting operator authorization'
 
   return (
     <AnimatePresence>
@@ -20,7 +28,8 @@ export function BlackoutOverlay() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35 }}
-          className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#090307]/92 px-6 pt-6 pb-20 backdrop-blur-md"
+          aria-labelledby="warden-heading"
+          className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-[#090307]/96 px-4 pt-22 pb-20 backdrop-blur-md sm:px-6"
         >
           {/* Crimson atmospheric sweep */}
           <motion.div
@@ -36,18 +45,14 @@ export function BlackoutOverlay() {
               initial={{ y: -16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className={`rounded-2xl border p-6 shadow-[0_0_60px_rgba(239,68,68,0.22)] ${
-                isContained
-                  ? 'border-emerald-500/50 bg-emerald-950/25'
-                  : 'border-red-500/60 bg-red-950/30'
-              }`}
+              className="rounded-2xl border border-red-500/45 bg-red-950/30 p-4 shadow-[0_0_60px_rgba(239,68,68,0.22)] sm:p-6"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 font-mono-tabular text-xs tracking-[0.24em] text-red-400 uppercase">
                   <AlertOctagon className="h-4 w-4" />
                   <span>05 / WARDEN — BLACKOUT PROTOCOL</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setStage('council')}
@@ -63,21 +68,33 @@ export function BlackoutOverlay() {
                 </div>
               </div>
 
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                {isContained
-                  ? 'VEGA HAS CONTAINED THE THREAT (DRY-RUN)'
-                  : isExecuting
-                    ? 'VEGA HAS ASSUMED CONTROL — EXECUTING CONTAINMENT'
-                    : isDenied
-                      ? 'CONTAINMENT HELD BY OPERATOR'
-                      : 'VEGA // SEV1 CONTAINMENT GATE READY'}
-              </h1>
-
-              <p className="mt-1.5 text-sm text-slate-300">
-                {wardenDecision
-                  ? `Target: ${wardenDecision.trusted_target_ref} • Scope: ${wardenDecision.scope}`
-                  : 'No active SEV1 Warden decision queued.'}
-              </p>
+              {wardenDecision ? (
+                <div className="flex flex-col items-center px-1 py-7 text-center sm:py-10">
+                  <VegaEye
+                    state="warden"
+                    className="h-auto w-24 drop-shadow-[0_0_16px_rgba(248,113,113,0.5)] sm:w-28"
+                  />
+                  <h1
+                    id="warden-heading"
+                    className="mt-3 max-w-[16ch] text-[clamp(2rem,6vw,4.5rem)] leading-[0.94] font-bold tracking-tight text-balance text-red-50"
+                  >
+                    VEGA HAS ASSUMED CONTROL
+                  </h1>
+                  <p role="status" className={`mt-4 font-mono-tabular text-xs tracking-widest uppercase ${isContained ? 'text-emerald-300' : 'text-amber-200'}`}>
+                    {containmentStatus}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Target: {wardenDecision.trusted_target_ref} • Scope: {wardenDecision.scope}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <h1 id="warden-heading" className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                    VEGA // SEV1 CONTAINMENT GATE READY
+                  </h1>
+                  <p className="mt-1.5 text-sm text-slate-300">No active SEV1 Warden decision queued.</p>
+                </>
+              )}
             </motion.div>
 
             {wardenDecision && (
