@@ -12,6 +12,39 @@ type PlacedNode = Point & NodeBounds
 
 const NODE_GAP = 8
 const HUB_ID = 'vega-core'
+const MIN_ORBIT_RADIUS = 210
+const ORBIT_GAP = 20
+
+/** Place every measured endpoint on one ring, with equal angles and a fixed hub. */
+export function spaceTopology(bounds: ReadonlyMap<string, NodeBounds>): Map<string, Point> {
+  const hub = bounds.get(HUB_ID)
+  const positions = new Map<string, Point>(hub ? [[HUB_ID, { x: 0, y: 0 }]] : [])
+  const endpoints = [...bounds].filter(([id]) => id !== HUB_ID)
+  const step = (2 * Math.PI) / endpoints.length
+  const startAngle = endpoints.length === 2 ? 0 : -Math.PI / 2
+  const slots = endpoints.map(([id, box], i) => {
+    const angle = startAngle + i * step
+    return { id, box, x: Math.cos(angle), y: Math.sin(angle) }
+  })
+
+  let radius = MIN_ORBIT_RADIUS
+  const includeClearance = (a: Point & { box: NodeBounds }, b: Point & { box: NodeBounds }) => {
+    const gapX = (a.box.width + b.box.width) / 2 + ORBIT_GAP
+    const gapY = (a.box.height + b.box.height) / 2 + ORBIT_GAP
+    // The cards only need separation along one axis. With unit-circle slots,
+    // each center difference scales directly with the shared ring radius.
+    const minimum = Math.min(gapX / Math.abs(a.x - b.x), gapY / Math.abs(a.y - b.y))
+    radius = Math.max(radius, Math.ceil(minimum))
+  }
+
+  for (const [i, slot] of slots.entries()) {
+    if (hub) includeClearance(slot, { x: 0, y: 0, box: hub })
+    for (let j = 0; j < i; j++) includeClearance(slot, slots[j])
+  }
+
+  for (const { id, x, y } of slots) positions.set(id, { x: radius * x, y: radius * y })
+  return positions
+}
 
 function nearestFreePosition(desired: Point, bounds: NodeBounds, placed: PlacedNode[]): Point {
   // Each placed card excludes this rectangle of possible centers for the next card.
@@ -44,7 +77,7 @@ function nearestFreePosition(desired: Point, bounds: NodeBounds, placed: PlacedN
   return nearest
 }
 
-/** Plan a layout in world coordinates at minimum zoom, using each card's rendered size. */
+/** Plan a layout in world coordinates using each card's unscaled size. */
 export function packTopology(
   desired: ReadonlyMap<string, Point>,
   bounds: ReadonlyMap<string, NodeBounds>,

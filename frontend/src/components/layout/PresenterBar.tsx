@@ -48,7 +48,7 @@ export function PresenterBar() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.18 }}
-          className="vega-panel fixed top-32 right-4 z-40 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
+          className="vega-panel pointer-events-auto absolute inset-x-4 top-full mt-2 ml-auto flex w-fit flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs"
         >
           {/* Source Mode Toggle */}
           <div className="flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 p-0.5 font-mono-tabular text-[10px]">

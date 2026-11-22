@@ -1,112 +1,56 @@
-import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force'
-import { Lock, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Lock, Minus, Plus, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
 import type { MonitoredNode } from '../../contracts/vega'
 import { drawTopologyDots, type TopologyHover } from '../../engine/drawTopologyDots'
 import { particleBus } from '../../engine/particleBus'
-import { packTopology, type NodeBounds, type Point } from '../../engine/topologyLayout'
+import { packTopology, spaceTopology, type NodeBounds, type Point } from '../../engine/topologyLayout'
 import { useVegaEyeState } from '../../store/useVegaEyeState'
 import { useVegaStore } from '../../store/useVegaStore'
-import { VegaBrand } from '../layout/VegaBrand'
 import { VegaEye } from '../layout/VegaEye'
-
-interface LayoutNode {
-  id: string
-  x: number
-  y: number
-  fx?: number
-  fy?: number
-}
-
-interface LayoutLink {
-  source: string | LayoutNode
-  target: string | LayoutNode
-}
 
 type CanvasDrag =
   | { kind: 'pan'; pointerId: number; last: Point }
   | { kind: 'node'; pointerId: number; nodeId: string; start: Point; offset: Point; moving: boolean }
 
-function computeStaticLayoutFromKey(topologyKey: string): Map<string, { x: number; y: number }> {
-  const [nodesPart = '', edgesPart = ''] = topologyKey.split('|')
-  const nodeSpecs = nodesPart
-    .split(',')
-    .filter(Boolean)
-    .map((item) => {
-      const [id, cluster] = item.split(':')
-      return { id, cluster }
-    })
-  const edgeSpecs = edgesPart
-    .split(',')
-    .filter(Boolean)
-    .map((item) => {
-      const [from, to] = item.split('>')
-      return { from, to }
-    })
+const MIN_ZOOM = 50
+const DEFAULT_ZOOM = 100
+const ZOOM_STEP = 10
+const ZOOM_BUTTON_CLASS = 'grid h-10 w-10 place-items-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-300 disabled:pointer-events-none disabled:opacity-35'
 
-  const simNodes: LayoutNode[] = nodeSpecs.map((n, idx) => {
-    if (n.id === 'vega-core') {
-      return { id: n.id, x: 0, y: 0, fx: 0, fy: 0 }
-    }
-    const angle = (idx / Math.max(1, nodeSpecs.length - 1)) * Math.PI * 2
-    const radius = n.cluster === 'eng' ? 210 : n.cluster === 'ops' ? 250 : 280
-    return {
-      id: n.id,
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius,
-    }
-  })
-
-  const simLinks: LayoutLink[] = edgeSpecs.map((e) => ({ source: e.from, target: e.to }))
-
-  const sim = forceSimulation<LayoutNode>(simNodes)
-    .force(
-      'link',
-      forceLink<LayoutNode, LayoutLink>(simLinks)
-        .id((d) => d.id)
-        .distance((l) => {
-          const s = typeof l.source === 'string' ? l.source : l.source.id
-          const t = typeof l.target === 'string' ? l.target : l.target.id
-          return s === 'vega-core' || t === 'vega-core' ? 215 : 145
-        })
-        .strength(0.65),
-    )
-    .force('charge', forceManyBody().strength(-520))
-    .force('collide', forceCollide(64))
-    .force('center', forceCenter(0, 0))
-    .stop()
-
-  for (let i = 0; i < 160; i++) {
-    sim.tick()
-  }
-
-  const map = new Map<string, { x: number; y: number }>()
-  for (const n of simNodes) {
-    map.set(n.id, { x: n.x, y: n.y })
-  }
-  return map
+export interface PanopticonHandle {
+  recenter: () => void
 }
 
-export function PanopticonCanvas() {
+export function PanopticonCanvas({ ref }: { ref: Ref<PanopticonHandle> }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const nodeElRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const pan = useRef({ x: 0, y: 0 })
+  const zoomRef = useRef(DEFAULT_ZOOM)
   const positionsRef = useRef(new Map<string, Point>())
+  const layoutIds = useRef<string[]>([])
+  const manualLayout = useRef(false)
 
   const eyeState = useVegaEyeState()
   const nodes = useVegaStore((s) => s.nodes)
-  const edges = useVegaStore((s) => s.edges)
   const stage = useVegaStore((s) => s.stage)
   const selectedNodeId = useVegaStore((s) => s.selectedNodeId)
   const selectNode = useVegaStore((s) => s.selectNode)
   const setStage = useVegaStore((s) => s.setStage)
-  const events = useVegaStore((s) => s.events)
-
   const [size, setSize] = useState({ width: 1280, height: 720 })
+  const [zoomPercent, setZoomPercent] = useState(DEFAULT_ZOOM)
 
-  const topologyKey = `${nodes.map((n) => `${n.source_id}:${n.cluster}`).join(',')}|${edges.map((e) => `${e.from}>${e.to}`).join(',')}`
-  const basePositions = useMemo(() => computeStaticLayoutFromKey(topologyKey), [topologyKey])
+  useImperativeHandle(ref, () => ({
+    recenter: () => {
+      pan.current = { x: 0, y: 0 }
+    },
+  }), [])
+
+  const setCanvasZoom = useCallback((percent: number) => {
+    const next = Math.max(MIN_ZOOM, Math.min(DEFAULT_ZOOM, percent))
+    zoomRef.current = next
+    setZoomPercent(next)
+  }, [])
 
   useEffect(() => {
     const el = containerRef.current
@@ -131,7 +75,7 @@ export function PanopticonCanvas() {
     canvas.height = size.height * dpr
 
     const origin = { x: size.width / 2, y: size.height / 2 }
-    const camera = { x: 0, y: 0, zoom: 1, panWeight: 1 }
+    const camera = { x: 0, y: 0, zoom: zoomRef.current / DEFAULT_ZOOM, panWeight: 1 }
     const hover: TopologyHover = { x: 0, y: 0, strength: 0, motion: 0 }
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     let hoverTarget: Point | null = null
@@ -139,20 +83,20 @@ export function PanopticonCanvas() {
     let suppressPointerClick = false
     let target: { id: string; point: Point } | undefined
     let needsLayout = true
+    let measuredNodes: MonitoredNode[] | undefined
     const bounds = new Map<string, NodeBounds>()
     const measureCards = new ResizeObserver(() => { needsLayout = true })
-    for (const card of nodeElRefs.current.values()) measureCards.observe(card)
 
     const canInteract = () => useVegaStore.getState().stage === 'panopticon'
     const movePan = (dx: number, dy: number) => {
-      let limitX = size.width / 2
-      let limitY = size.height / 2
+      let limitX = size.width / (2 * camera.zoom)
+      let limitY = size.height / (2 * camera.zoom)
       for (const { x, y } of positionsRef.current.values()) {
         limitX = Math.max(limitX, Math.abs(x) + 64)
         limitY = Math.max(limitY, Math.abs(y) + 64)
       }
-      pan.current.x = Math.max(-limitX, Math.min(limitX, pan.current.x + dx))
-      pan.current.y = Math.max(-limitY, Math.min(limitY, pan.current.y + dy))
+      pan.current.x = Math.max(-limitX, Math.min(limitX, pan.current.x + dx / camera.zoom))
+      pan.current.y = Math.max(-limitY, Math.min(limitY, pan.current.y + dy / camera.zoom))
     }
 
     const onWheel = (event: WheelEvent) => {
@@ -276,6 +220,16 @@ export function PanopticonCanvas() {
         case 'Home':
           pan.current = { x: 0, y: 0 }
           break
+        case '-':
+          setCanvasZoom(zoomRef.current - ZOOM_STEP)
+          break
+        case '=':
+        case '+':
+          setCanvasZoom(zoomRef.current + ZOOM_STEP)
+          break
+        case '0':
+          setCanvasZoom(DEFAULT_ZOOM)
+          break
         default:
           return
       }
@@ -299,35 +253,58 @@ export function PanopticonCanvas() {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
       lastTime = now
 
+      const state = useVegaStore.getState()
+      // Wait for React to mount new cards, and finish any drag before rebalancing.
+      if (!drag && !target && state.nodes !== measuredNodes) {
+        const ids = state.nodes.map((node) => node.source_id).sort()
+        if (ids.every((id) => nodeElRefs.current.has(id))) {
+          const rosterChanged =
+            ids.length !== layoutIds.current.length || ids.some((id, i) => id !== layoutIds.current[i])
+          if (!measuredNodes || rosterChanged) {
+            measureCards.disconnect()
+            for (const card of nodeElRefs.current.values()) measureCards.observe(card)
+            needsLayout = true
+          }
+          if (rosterChanged) {
+            layoutIds.current = ids
+            manualLayout.current = false
+          }
+          measuredNodes = state.nodes
+        }
+      }
+
       if (needsLayout) {
         bounds.clear()
-        for (const [id, card] of nodeElRefs.current) {
-          bounds.set(id, { width: card.offsetWidth, height: card.offsetHeight })
+        for (const id of layoutIds.current) {
+          const card = nodeElRefs.current.get(id)
+          if (card) bounds.set(id, { width: card.offsetWidth, height: card.offsetHeight })
         }
       }
       if (needsLayout || target) {
-        const desired = new Map<string, Point>()
-        for (const [id, seed] of basePositions) desired.set(id, positionsRef.current.get(id) ?? seed)
-        positionsRef.current = packTopology(desired, bounds, target)
+        if (target) manualLayout.current = true
+        positionsRef.current = manualLayout.current
+          ? packTopology(positionsRef.current, bounds, target)
+          : spaceTopology(bounds)
         needsLayout = false
         target = undefined
       }
       const positions = positionsRef.current
-      const state = useVegaStore.getState()
       if (state.stage !== 'panopticon') hoverTarget = null
       const isGhost = state.stage === 'ghost_protocol'
       const focusId = state.selectedNodeId ?? 'vm-a'
       const focusPos = positions.get(focusId)
 
       // Smooth camera target: zoom into selected node and shift left to leave room for Ghost Protocol drawer
-      const targetZoom = isGhost ? 1.42 : 1
+      const targetZoom = isGhost ? 1.42 : zoomRef.current / DEFAULT_ZOOM
       const targetX = isGhost && focusPos ? focusPos.x + 130 : 0
       const targetY = isGhost && focusPos ? focusPos.y : 0
 
       const lerp = 1 - Math.exp(-6 * dt)
       camera.x += (targetX - camera.x) * lerp
       camera.y += (targetY - camera.y) * lerp
-      camera.zoom += (targetZoom - camera.zoom) * lerp
+      if (!drag || isGhost) {
+        camera.zoom += (targetZoom - camera.zoom) * (reducedMotion.matches ? 1 : lerp)
+      }
       // Keep input responsive while smoothly blending into and out of node inspection.
       camera.panWeight += ((isGhost ? 0 : 1) - camera.panWeight) * lerp
       const cameraX = camera.x + pan.current.x * camera.panWeight
@@ -453,7 +430,10 @@ export function PanopticonCanvas() {
         const pos = positions.get(node.source_id)
         if (!el || !pos) continue
         const { sx, sy } = toScreen(pos.x, pos.y)
-        el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -50%)`
+        // Scale cards with their world positions when zooming out so they stay separated.
+        // Keep the existing card size during the inspection camera's zoom-in.
+        el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -50%) scale(${Math.min(1, camera.zoom)})`
+        if (!el.style.visibility) el.style.visibility = 'visible'
       }
 
       rafId = window.requestAnimationFrame(render)
@@ -478,7 +458,7 @@ export function PanopticonCanvas() {
       el.removeEventListener('keydown', onKeyDown)
       el.removeEventListener('click', onClickCapture, true)
     }
-  }, [basePositions, size])
+  }, [setCanvasZoom, size])
 
   const handleNodeClick = (node: MonitoredNode) => {
     if (node.source_id === 'vega-core') return
@@ -493,37 +473,49 @@ export function PanopticonCanvas() {
       ref={containerRef}
       role="region"
       aria-label="Topology canvas"
-      aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home"
+      aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home - = 0"
       tabIndex={0}
       className="relative h-full w-full touch-none cursor-grab overflow-clip select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-300 data-[dragging=true]:cursor-grabbing"
     >
-      <VegaBrand
-        onRecenter={() => {
-          pan.current = { x: 0, y: 0 }
-          setStage('panopticon')
-        }}
-      />
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />
 
-      {/* Top-left Panopticon Telemetry Legend */}
-      <div className="pointer-events-none absolute top-32 right-4 left-4 z-10 xl:top-4 xl:right-auto">
-        <div className="vega-panel rounded-lg px-3 py-2">
-          <div className="font-mono-tabular text-[10px] tracking-[0.2em] text-sky-400 uppercase">
-            01 / SENTINEL PANOPTICON
-          </div>
-          <div className="mt-0.5 text-xs text-slate-300">
-            {nodes.length - 1} monitored endpoints • 3 Redis channel streams (
-            <span className="font-mono-tabular text-sky-300">file</span>,{' '}
-            <span className="font-mono-tabular text-cyan-300">network</span>,{' '}
-            <span className="font-mono-tabular text-indigo-300">process</span>)
-          </div>
-          <div className="mt-1.5 flex items-center gap-3 font-mono-tabular text-[10px] text-slate-400">
-            <span>EVENTS INGESTED: {events.length}</span>
-            <span>•</span>
-            <span>CLICK TO INSPECT · DRAG TO MOVE</span>
-          </div>
+      {stage === 'panopticon' && (
+        <div
+          role="group"
+          aria-label="Topology zoom"
+          className="vega-panel absolute right-4 bottom-18 z-10 flex cursor-default items-center rounded-xl p-1"
+        >
+          <button
+            type="button"
+            aria-label="Zoom out"
+            title="Zoom out (−)"
+            className={ZOOM_BUTTON_CLASS}
+            disabled={zoomPercent === MIN_ZOOM}
+            onClick={() => setCanvasZoom(zoomRef.current - ZOOM_STEP)}
+          >
+            <Minus aria-hidden="true" className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={`Reset zoom to 100 percent (currently ${zoomPercent} percent)`}
+            title="Reset zoom (0)"
+            className={`${ZOOM_BUTTON_CLASS} min-w-14 font-mono-tabular text-xs`}
+            onClick={() => setCanvasZoom(DEFAULT_ZOOM)}
+          >
+            {zoomPercent}%
+          </button>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            title="Zoom in (+)"
+            className={ZOOM_BUTTON_CLASS}
+            disabled={zoomPercent === DEFAULT_ZOOM}
+            onClick={() => setCanvasZoom(zoomRef.current + ZOOM_STEP)}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+          </button>
         </div>
-      </div>
+      )}
 
       {/* Interactive HTML Node Badges synced to Canvas coordinates */}
       <div className="absolute inset-0 z-0">
@@ -556,7 +548,7 @@ export function PanopticonCanvas() {
               aria-disabled={isCore || undefined}
               tabIndex={isCore ? -1 : undefined}
               onClick={() => handleNodeClick(node)}
-              className={`group absolute top-0 left-0 flex items-center gap-2 border backdrop-blur-md ${ringClass} ${
+              className={`group invisible absolute top-0 left-0 flex items-center gap-2 border backdrop-blur-md ${ringClass} ${
                 isCore
                   ? 'size-40 cursor-default flex-col justify-center rounded-full px-5 text-center transition-[background-color,border-color,box-shadow] motion-reduce:transition-none'
                   : `rounded-xl px-2.5 py-1.5 text-left transition-colors ${stage === 'panopticon' ? 'cursor-grab data-[moving=true]:cursor-grabbing' : 'cursor-pointer'}`

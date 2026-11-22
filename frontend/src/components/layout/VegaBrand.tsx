@@ -46,10 +46,10 @@ export function VegaBrand({ onRecenter }: { onRecenter: () => void }) {
         aria-label="VEGA — recenter topology"
         aria-describedby="vega-eye-status"
         title={`${STATUS_LABEL[state]} Click to recenter.`}
-        className="vega-glass absolute top-4 left-1/2 z-30 inline-flex min-h-16 -translate-x-1/2 cursor-pointer items-center gap-3.5 rounded-full px-6 text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-300 sm:min-h-20 sm:px-7"
+        className="vega-glass relative inline-flex min-h-14 cursor-pointer items-center rounded-full px-4 text-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:min-h-16"
       >
         {/* Doom-inspired angular wordmark rendered as frosted liquid glass with specular rim & halo. */}
-        <div aria-hidden="true" className="relative h-12 aspect-[182/72] shrink-0 sm:h-14">
+        <div aria-hidden="true" className="relative h-10 aspect-[182/72] shrink-0 sm:h-12">
           <div
             className="pointer-events-none absolute inset-0 backdrop-blur-md backdrop-saturate-150 backdrop-brightness-125"
             style={{ clipPath: `url(#${clipOuterId})` }}

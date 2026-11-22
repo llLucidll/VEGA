@@ -1,17 +1,19 @@
-import { useEffect } from 'react'
-import { PresenterBar } from './components/layout/PresenterBar'
+import { useEffect, useRef, useState } from 'react'
+import { DashboardHeader } from './components/layout/DashboardHeader'
 import { ChronosScrubber } from './components/overlays/ChronosScrubber'
 import { ObserverDrawer } from './components/overlays/ObserverDrawer'
 import { BlackoutOverlay } from './components/stages/BlackoutOverlay'
 import { CouncilView } from './components/stages/CouncilView'
 import { GhostProtocolPanel } from './components/stages/GhostProtocolPanel'
-import { PanopticonCanvas } from './components/stages/PanopticonCanvas'
+import { PanopticonCanvas, type PanopticonHandle } from './components/stages/PanopticonCanvas'
 import { switchDataMode, vegaSource } from './engine/sourceManager'
 import { useVegaStore } from './store/useVegaStore'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
 export function App() {
+  const topology = useRef<PanopticonHandle>(null)
+  const [headerHeight, setHeaderHeight] = useState(0)
   const threatMode = useVegaStore((s) => s.threatMode)
   const wardenDecisionId = useVegaStore((s) => s.wardenDecision?.decision_id)
   const setStage = useVegaStore((s) => s.setStage)
@@ -73,11 +75,17 @@ export function App() {
       data-threat-mode={threatMode}
       className="relative h-dvh w-full overflow-hidden bg-[#050811] text-slate-100"
     >
-      <PresenterBar />
+      <DashboardHeader
+        onHeightChange={setHeaderHeight}
+        onRecenter={() => {
+          topology.current?.recenter()
+          setStage('panopticon')
+        }}
+      />
 
       <main className="relative h-full overflow-clip">
-        <PanopticonCanvas />
-        <GhostProtocolPanel />
+        <PanopticonCanvas ref={topology} />
+        <GhostProtocolPanel headerHeight={headerHeight} />
         <CouncilView />
         <BlackoutOverlay />
       </main>
