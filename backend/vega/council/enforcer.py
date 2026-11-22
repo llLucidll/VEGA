@@ -421,7 +421,10 @@ iptables -X VEGA_QUARANTINE 2>/dev/null || true
                 entries.append(_audit("WARDEN", f"[{host}] Release warning: {exc}", "warn"))
 
         if self.auth0_client_id and self.auth0_client_secret:
-            for user_id in sorted(self._revoked_subjects):
+            subjects_to_unblock = set(self._revoked_subjects) | {
+                self.vm_subjects[h] for h in target_hosts if h in self.vm_subjects
+            }
+            for user_id in sorted(subjects_to_unblock):
                 try:
                     await self._set_auth0_blocked(user_id, blocked=False)
                     self._revoked_subjects.discard(user_id)
